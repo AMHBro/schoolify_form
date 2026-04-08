@@ -1,11 +1,13 @@
 export type AppRoute =
   | { name: 'student'; shareCode: string }
+  | { name: 'system' }
   | { name: 'teacher' }
   | { name: 'teacherNew' }
   | { name: 'home' }
 
 export function parsePath(pathname: string): AppRoute {
   const t = pathname.replace(/\/+$/, '') || '/'
+  if (t === '/system' || t.endsWith('/system')) return { name: 'system' }
   if (t === '/teacher/new' || t.endsWith('/teacher/new')) return { name: 'teacherNew' }
   if (t === '/teacher' || t.endsWith('/teacher')) return { name: 'teacher' }
 

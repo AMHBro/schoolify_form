@@ -1,6 +1,8 @@
 /** نصوص سياقية موحّدة لرأس التطبيق */
 export function getPageContext(pathname: string): { kicker: string; label: string } {
   const p = pathname.replace(/\/+$/, '') || '/'
+  if (p.startsWith('/system'))
+    return { kicker: 'النظام', label: 'لوحة الإدارة' }
   if (p.startsWith('/teacher/new'))
     return { kicker: 'الأستاذ', label: 'إنشاء واجب' }
   if (p.startsWith('/teacher'))

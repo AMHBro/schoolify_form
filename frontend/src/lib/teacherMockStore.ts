@@ -67,6 +67,10 @@ export function mockRegisterTeacher(
   return { ok: true }
 }
 
+export function mockListTeachers(): MockTeacherRow[] {
+  return readTeachers().slice().sort((a, b) => a.fullName.localeCompare(b.fullName, 'ar'))
+}
+
 export function mockLoginTeacher(
   fullName: string,
   phone: string

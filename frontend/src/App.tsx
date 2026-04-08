@@ -8,6 +8,7 @@ import { getTeacherSession } from './lib/teacherSession'
 import { AssignmentBuilderPage } from './views/AssignmentBuilderPage'
 import { HomePage } from './views/HomePage'
 import { StudentAssignmentPage } from './views/StudentAssignmentPage'
+import { SystemAdminPage } from './views/SystemAdminPage'
 import { TeacherDashboard } from './views/TeacherDashboard'
 
 function App() {
@@ -33,7 +34,9 @@ function App() {
   }, [pathname, search, navigate])
 
   let body: ReactNode
-  if (route.name === 'teacherNew')
+  if (route.name === 'system')
+    body = <SystemAdminPage navigate={navigate} />
+  else if (route.name === 'teacherNew')
     body = <AssignmentBuilderPage navigate={navigate} />
   else if (route.name === 'teacher')
     body = (

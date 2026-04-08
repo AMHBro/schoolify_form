@@ -106,3 +106,11 @@ export function mockGenerateShareCode(): string {
   if (readAll().some((a) => a.shareCode === out)) return mockGenerateShareCode()
   return out
 }
+
+export function mockDeleteAssignment(assignmentId: string): boolean {
+  const all = readAll()
+  const next = all.filter((a) => a.id !== assignmentId)
+  if (next.length === all.length) return false
+  writeAll(next)
+  return true
+}

@@ -7,15 +7,22 @@ import { DEMO_ASSIGNMENT } from '../mock/fixtures'
 import {
   mockAppendSubmission,
   mockCreateAssignment as persistMockAssignment,
+  mockDeleteAssignment,
   mockFindByIdAndToken,
   mockFindByIdForTeacher,
   mockFindByShareCode,
   mockGenerateShareCode,
+  mockListAssignments,
   mockListForTeacher,
   toSchema,
 } from './localAssignmentStore'
-import { mockLoginTeacher, mockRegisterTeacher } from './teacherMockStore'
+import {
+  mockListTeachers,
+  mockLoginTeacher,
+  mockRegisterTeacher,
+} from './teacherMockStore'
 import { getTeacherSession, setTeacherSession } from './teacherSession'
+import { compressFileForUpload } from './compressUpload'
 import {
   getSupabaseClient,
   isSupabaseEnabled,
@@ -373,6 +380,210 @@ function parseAssignmentListJson(data: unknown): TeacherAssignmentListItem[] {
   })
 }
 
+export type SystemAdminTeacherRow = {
+  id: string
+  fullName: string
+  phone: string
+  createdAt: string | null
+}
+
+export type SystemAdminAssignmentRow = {
+  id: string
+  title: string
+  shareCode: string
+  createdAt: string | null
+  deadlineAt: string | null
+  teacherName: string | null
+  submissionCount: number
+}
+
+function systemAdminMockSecretExpected(): string {
+  return (import.meta.env.VITE_SYSTEM_ADMIN_MOCK_KEY ?? 'schoolify-dev-admin').trim()
+}
+
+function assertSystemAdminMockKey(key: string): boolean {
+  return key.trim() === systemAdminMockSecretExpected()
+}
+
+export function translateSystemAdminError(message: string): string {
+  const m = message.toLowerCase()
+  if (m.includes('system_admin_forbidden')) return 'مفتاح الإدارة غير صحيح.'
+  if (m.includes('phone_taken')) return 'هذا الرقم مسجّل مسبقًا.'
+  if (m.includes('phone_invalid')) return 'رقم الجوال غير صالح.'
+  if (m.includes('name_required')) return 'الاسم مطلوب (حرفان على الأقل).'
+  if (m.includes('assignment_not_found')) return 'الواجب غير موجود.'
+  if (
+    m.includes('could not find') ||
+    m.includes('does not exist') ||
+    m.includes('42883')
+  ) {
+    return 'دوال لوحة النظام غير مثبّتة. نفّذ ملف 20260408240000_system_admin_dashboard.sql في Supabase.'
+  }
+  if (message.trim()) return message.trim()
+  return 'تعذّر تنفيذ العملية.'
+}
+
+function parseSystemAdminTeachersJson(data: unknown): SystemAdminTeacherRow[] {
+  if (data == null) return []
+  let rows: unknown = data
+  if (typeof data === 'string') {
+    try {
+      rows = JSON.parse(data) as unknown
+    } catch {
+      return []
+    }
+  }
+  if (!Array.isArray(rows)) return []
+  return rows.map((r) => {
+    const o = r as Record<string, unknown>
+    return {
+      id: String(o.id ?? ''),
+      fullName: String(o.fullName ?? o.full_name ?? ''),
+      phone: String(o.phone ?? ''),
+      createdAt: o.createdAt != null ? String(o.createdAt) : null,
+    }
+  })
+}
+
+function parseSystemAdminListAssignmentsJson(
+  data: unknown
+): SystemAdminAssignmentRow[] {
+  if (data == null) return []
+  let rows: unknown = data
+  if (typeof data === 'string') {
+    try {
+      rows = JSON.parse(data) as unknown
+    } catch {
+      return []
+    }
+  }
+  if (!Array.isArray(rows)) return []
+  return rows.map((r) => {
+    const o = r as Record<string, unknown>
+    const tn = o.teacherName ?? o.teacher_name
+    return {
+      id: String(o.id ?? ''),
+      title: String(o.title ?? ''),
+      shareCode: String(o.shareCode ?? o.share_code ?? ''),
+      createdAt: o.createdAt != null ? String(o.createdAt) : null,
+      deadlineAt: o.deadlineAt != null ? String(o.deadlineAt) : null,
+      teacherName: tn != null && String(tn).length > 0 ? String(tn) : null,
+      submissionCount: Number(o.submissionCount ?? 0),
+    }
+  })
+}
+
+export async function systemAdminListTeachers(
+  adminKey: string
+): Promise<
+  { ok: true; rows: SystemAdminTeacherRow[] } | { ok: false; message: string }
+> {
+  if (USE_MOCK) {
+    await delay(30)
+    if (!assertSystemAdminMockKey(adminKey))
+      return { ok: false, message: translateSystemAdminError('system_admin_forbidden') }
+    const rows = mockListTeachers().map((t) => ({
+      id: t.id,
+      fullName: t.fullName,
+      phone: t.phone,
+      createdAt: null as string | null,
+    }))
+    return { ok: true, rows }
+  }
+  const sb = getSupabaseClient()!
+  const { data, error } = await sb.rpc('system_admin_list_teachers', {
+    p_secret: adminKey.trim(),
+  })
+  if (error)
+    return { ok: false, message: translateSystemAdminError(error.message) }
+  return { ok: true, rows: parseSystemAdminTeachersJson(data) }
+}
+
+export async function systemAdminRegisterTeacher(
+  adminKey: string,
+  fullName: string,
+  phone: string
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (USE_MOCK) {
+    await delay(40)
+    if (!assertSystemAdminMockKey(adminKey))
+      return { ok: false, message: translateSystemAdminError('system_admin_forbidden') }
+    const r = mockRegisterTeacher(fullName, phone)
+    if (!r.ok) return { ok: false, message: translateAuthError(r.code) }
+    return { ok: true }
+  }
+  const sb = getSupabaseClient()!
+  const { error } = await sb.rpc('system_admin_register_teacher', {
+    p_secret: adminKey.trim(),
+    p_full_name: fullName.trim(),
+    p_phone: phone.trim(),
+  })
+  if (error)
+    return { ok: false, message: translateSystemAdminError(error.message) }
+  return { ok: true }
+}
+
+export async function systemAdminListAssignments(
+  adminKey: string
+): Promise<
+  | { ok: true; rows: SystemAdminAssignmentRow[] }
+  | { ok: false; message: string }
+> {
+  if (USE_MOCK) {
+    await delay(30)
+    if (!assertSystemAdminMockKey(adminKey))
+      return { ok: false, message: translateSystemAdminError('system_admin_forbidden') }
+    const teachers = mockListTeachers()
+    const nameById = new Map(teachers.map((t) => [t.id, t.fullName]))
+    const rows = mockListAssignments()
+      .map((a) => ({
+        id: a.id,
+        title: a.title,
+        shareCode: a.shareCode,
+        createdAt: a.createdAt ?? null,
+        deadlineAt: a.deadlineAt ?? null,
+        teacherName: a.teacherId ? nameById.get(a.teacherId) ?? null : null,
+        submissionCount: a.submissions.length,
+      }))
+      .sort((x, y) => {
+        const tx = x.createdAt ? new Date(x.createdAt).getTime() : 0
+        const ty = y.createdAt ? new Date(y.createdAt).getTime() : 0
+        return ty - tx
+      })
+    return { ok: true, rows }
+  }
+  const sb = getSupabaseClient()!
+  const { data, error } = await sb.rpc('system_admin_list_assignments', {
+    p_secret: adminKey.trim(),
+  })
+  if (error)
+    return { ok: false, message: translateSystemAdminError(String(error.message)) }
+  return { ok: true, rows: parseSystemAdminListAssignmentsJson(data) }
+}
+
+export async function systemAdminDeleteAssignment(
+  adminKey: string,
+  assignmentId: string
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (USE_MOCK) {
+    await delay(50)
+    if (!assertSystemAdminMockKey(adminKey))
+      return { ok: false, message: translateSystemAdminError('system_admin_forbidden') }
+    const ok = mockDeleteAssignment(assignmentId)
+    if (!ok)
+      return { ok: false, message: translateSystemAdminError('assignment_not_found') }
+    return { ok: true }
+  }
+  const sb = getSupabaseClient()!
+  const { error } = await sb.rpc('system_admin_delete_assignment', {
+    p_secret: adminKey.trim(),
+    p_assignment_id: assignmentId,
+  })
+  if (error)
+    return { ok: false, message: translateSystemAdminError(error.message) }
+  return { ok: true }
+}
+
 export async function listTeacherAssignments(): Promise<
   TeacherAssignmentListItem[]
 > {
@@ -579,6 +790,32 @@ function parseSubmissionForm(fd: FormData): {
   return { assignmentId, answers, fileRows }
 }
 
+type PreparedFileRow = {
+  fieldId: string
+  /** الملف بعد الضغط (صور) أو الأصل — للمسار في التخزين و contentType */
+  file: File
+  sort: number
+  /** اسم الملف كما اختاره الطالب — يُمرَّر إلى p_original_name ويُعرَض للأستاذ */
+  originalName: string
+}
+
+async function prepareFilesForUpload(
+  fileRows: { fieldId: string; file: File; sort: number }[]
+): Promise<PreparedFileRow[]> {
+  return Promise.all(
+    fileRows.map(async (row) => {
+      const originalName = row.file.name
+      const file = await compressFileForUpload(row.file)
+      return {
+        fieldId: row.fieldId,
+        sort: row.sort,
+        file,
+        originalName,
+      }
+    })
+  )
+}
+
 function translateSubmitError(message: string): string {
   const m = message.toLowerCase()
   if (m.includes('not_found')) return 'الواجب غير موجود.'
@@ -614,13 +851,14 @@ export async function submitAssignment(
         return { ok: false, message: 'انتهى موعد التسليم.' }
       }
       const { answers, fileRows } = parseSubmissionForm(payload)
+      const prepared = await prepareFilesForUpload(fileRows)
       const submission: SubmissionRecord = {
         id: crypto.randomUUID(),
         studentName: answers.student_name || answers.name || 'طالب',
         submittedAt: new Date().toISOString(),
         textAnswer: answers.answer_text?.trim() || undefined,
-        files: fileRows.map((fr) => ({
-          name: fr.file.name,
+        files: prepared.map((fr) => ({
+          name: fr.originalName,
           url: URL.createObjectURL(fr.file),
           isImage: fr.file.type.startsWith('image/'),
         })),
@@ -657,8 +895,9 @@ export async function submitAssignment(
   }
 
   const subId = String(submissionId)
+  const prepared = await prepareFilesForUpload(fileRows)
 
-  for (const row of fileRows) {
+  for (const row of prepared) {
     const safe = sanitizeFileName(row.file.name)
     const objectPath = `${assignmentId}/${subId}/${row.fieldId}/${crypto.randomUUID()}_${safe}`
 
@@ -682,7 +921,8 @@ export async function submitAssignment(
       p_submission_id: subId,
       p_field_id: row.fieldId,
       p_storage_path: objectPath,
-      p_original_name: row.file.name,
+      // اسم العرض للأستاذ — من جهاز الطالب قبل أي إعادة تسمية للتخزين
+      p_original_name: row.originalName,
       p_mime_type: row.file.type || null,
       p_is_image: row.file.type.startsWith('image/'),
       p_sort_order: row.sort,

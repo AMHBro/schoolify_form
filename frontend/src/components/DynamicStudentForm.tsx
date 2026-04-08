@@ -231,9 +231,19 @@ export function DynamicStudentForm({ schema }: Props) {
                   onChange={(e) => onPickFiles(f, e.target.files)}
                 />
                 <span className="upload-hint">
-                  {f.type === 'images'
-                    ? `اختر صورًا — يمكن اختيار حتى ${maxCount} صورة دفعة واحدة من المعرض، أو الإضافة على دفعات.`
-                    : `اختر ملفات — حتى ${maxCount} ملف.`}
+                  {f.type === 'images' ? (
+                    <>
+                      {`اختر صورًا — يمكن اختيار حتى ${maxCount} صورة دفعة واحدة من المعرض، أو الإضافة على دفعات.`}
+                      <span
+                        className="muted small"
+                        style={{ display: 'block', marginTop: '0.35rem' }}
+                      >
+                        الصور تُصغَّر أبعادًا وتُحوَّل إلى JPEG قبل الإرسال إذا خفّف ذلك الحجم.
+                      </span>
+                    </>
+                  ) : (
+                    `اختر ملفات — حتى ${maxCount} ملف. (ملفات PDF تُرفع كما هي.)`
+                  )}
                 </span>
               </label>
               {previews.length > 0 && (

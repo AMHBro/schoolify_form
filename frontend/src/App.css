@@ -913,3 +913,99 @@
   background: var(--accent-soft);
   color: var(--accent-deep);
 }
+
+/* —— لوحة إدارة النظام —— */
+.system-admin-shell {
+  max-width: 960px;
+  margin-inline: auto;
+}
+
+.system-admin-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.system-admin-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.system-admin-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1.25rem 0;
+  flex-wrap: wrap;
+}
+
+.system-admin-section {
+  margin-top: 0.5rem;
+}
+
+.system-admin-h2 {
+  font-size: 1rem;
+  margin: 1.25rem 0 0.65rem;
+  color: var(--text-strong);
+}
+
+.system-admin-inline-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 720px) {
+  .system-admin-inline-form {
+    grid-template-columns: 1fr 1fr auto;
+    align-items: end;
+  }
+
+  .system-admin-add-actions {
+    padding-bottom: 0.15rem;
+  }
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-top: 0.5rem;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.55rem 0.75rem;
+  text-align: start;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.data-table th {
+  background: var(--surface-2);
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(107, 90, 140, 0.04);
+}
+
+.home-admin-link {
+  margin-top: 1.25rem;
+  text-align: center;
+}

@@ -114,6 +114,15 @@ export function HomePage({ go }: Props) {
       <p className="muted small home-demo-note" style={{ textAlign: 'center' }}>
         الطلاب: رابط مثل <code className="inline-code">/s/DEMO2024</code> فقط.
       </p>
+      <p className="home-admin-link">
+        <button
+          type="button"
+          className="btn secondary"
+          onClick={() => go('/system')}
+        >
+          لوحة إدارة النظام (معلّمون، حذف واجبات)
+        </button>
+      </p>
     </div>
   )
 }
