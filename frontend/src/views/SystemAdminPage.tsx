@@ -4,6 +4,7 @@ import {
   systemAdminListAssignments,
   systemAdminListTeachers,
   systemAdminRegisterTeacher,
+  teacherLogin,
   type SystemAdminAssignmentRow,
   type SystemAdminTeacherRow,
 } from '../lib/assignmentApi'
@@ -139,18 +140,25 @@ export function SystemAdminPage({ navigate }: Props) {
     e.preventDefault()
     const key = getSystemAdminSecret()
     if (!key) return
+    const savedName = newName.trim()
+    const savedPhone = newPhone.trim()
     setAddMsg(null)
     setAddBusy(true)
     try {
-      const r = await systemAdminRegisterTeacher(key, newName.trim(), newPhone)
+      const r = await systemAdminRegisterTeacher(key, savedName, savedPhone)
       if (r.ok === false) {
         setAddMsg(r.message)
         return
       }
+      await refreshLists()
       setNewName('')
       setNewPhone('')
-      setAddMsg('تم الحفظ.')
-      await refreshLists()
+      const login = await teacherLogin(savedName, savedPhone)
+      if (login.ok) {
+        navigate('/teacher')
+      } else {
+        setAddMsg(`تم الحفظ. ${login.message}`)
+      }
     } finally {
       setAddBusy(false)
     }
@@ -305,11 +313,7 @@ export function SystemAdminPage({ navigate }: Props) {
             </div>
           </form>
           {addMsg ? (
-            <p
-              className={`inline-hint small ${addMsg === 'تم الحفظ.' ? 'success-hint' : ''}`}
-            >
-              {addMsg}
-            </p>
+            <p className="inline-hint small form-error">{addMsg}</p>
           ) : null}
 
           <h2 className="system-admin-h2">المعلّمون</h2>
