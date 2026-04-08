@@ -153,10 +153,7 @@ export function DynamicStudentForm({ schema }: Props) {
   if (done) {
     return (
       <div className="panel success-panel student-shell">
-        <h2 className="success-title">تم التسليم بنجاح</h2>
-        <p className="muted">
-          شكرًا. يمكنك إغلاق الصفحة؛ سيصل تنبيه للأستاذ عند الربط بالخادم.
-        </p>
+        <h2 className="success-title">تم الإرسال</h2>
       </div>
     )
   }
@@ -165,7 +162,6 @@ export function DynamicStudentForm({ schema }: Props) {
     return (
       <div className="panel closed-panel student-shell">
         <h2>انتهى موعد التسليم</h2>
-        <p className="muted">هذا الواجب مغلق تلقائيًا وفق الموعد المحدد.</p>
       </div>
     )
   }
@@ -231,19 +227,9 @@ export function DynamicStudentForm({ schema }: Props) {
                   onChange={(e) => onPickFiles(f, e.target.files)}
                 />
                 <span className="upload-hint">
-                  {f.type === 'images' ? (
-                    <>
-                      {`اختر صورًا — يمكن اختيار حتى ${maxCount} صورة دفعة واحدة من المعرض، أو الإضافة على دفعات.`}
-                      <span
-                        className="muted small"
-                        style={{ display: 'block', marginTop: '0.35rem' }}
-                      >
-                        الصور تُصغَّر أبعادًا وتُحوَّل إلى JPEG قبل الإرسال إذا خفّف ذلك الحجم.
-                      </span>
-                    </>
-                  ) : (
-                    `اختر ملفات — حتى ${maxCount} ملف. (ملفات PDF تُرفع كما هي.)`
-                  )}
+                  {f.type === 'images'
+                    ? `صور — حتى ${maxCount}`
+                    : `ملفات — حتى ${maxCount}`}
                 </span>
               </label>
               {previews.length > 0 && (
@@ -279,7 +265,7 @@ export function DynamicStudentForm({ schema }: Props) {
 
       <div className="form-actions">
         <button type="submit" className="btn primary" disabled={busy}>
-          {busy ? 'جارٍ الإرسال…' : 'إرسال التسليم'}
+          {busy ? 'جارٍ الإرسال…' : 'إرسال'}
         </button>
       </div>
     </form>

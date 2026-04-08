@@ -52,15 +52,6 @@ export function AppHeader({ pathname, navigate }: Props) {
               </button>
             </div>
             <div className="nav-cluster" role="group">
-              {!isSystem ? (
-                <button
-                  type="button"
-                  className="nav-pill nav-pill-ghost"
-                  onClick={() => navigate('/system')}
-                >
-                  إدارة النظام
-                </button>
-              ) : null}
               <button
                 type="button"
                 className="nav-pill nav-pill-ghost"
@@ -73,20 +64,7 @@ export function AppHeader({ pathname, navigate }: Props) {
               </button>
             </div>
           </>
-        ) : (
-          <div className="nav-cluster" role="group">
-            <button
-              type="button"
-              className="nav-pill nav-pill-ghost"
-              onClick={() => navigate('/system')}
-            >
-              إدارة النظام
-            </button>
-            <span className="muted small" style={{ paddingInline: '0.35rem' }}>
-              للأساتذة — سجّل الدخول من الصفحة الرئيسية
-            </span>
-          </div>
-        )}
+        ) : null}
       </nav>
     </header>
   )

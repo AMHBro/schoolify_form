@@ -1,5 +1,4 @@
--- بيانات تجريبية (اختياري) — نفّذ بعد الهجرة الرئيسية
--- يضيف واجبًا بكود DEMO2024 ومعرّفات ثابتة لتسهيل ملء frontend/.env
+-- بذرة تجريبية — بعد الهجرات
 
 insert into public.assignments (
   id,
@@ -12,8 +11,8 @@ insert into public.assignments (
 )
 values (
   'a0e8400e-d29f-41d4-a716-446655440000'::uuid,
-  'واجب تجريبي — Supabase',
-  'بعد التشغيل انسخ القيم من frontend/.env.example إلى frontend/.env',
+  'واجب تجريبي',
+  null,
   now() + interval '7 days',
   'DEMO2024',
   '[
@@ -31,8 +30,6 @@ on conflict (share_code) do update set
   fields = excluded.fields,
   teacher_view_token = excluded.teacher_view_token;
 
--- بعد تشغيل supabase/migrations/20260408210000_teachers_sessions.sql:
--- معلّم تجريبي: سجّل الدخول بالاسم «معلّم تجريبي» والرقم «966500000000»
 insert into public.teachers (id, full_name, phone_e164)
 values (
   'c0e8400e-d29f-41d4-a716-446655440001'::uuid,

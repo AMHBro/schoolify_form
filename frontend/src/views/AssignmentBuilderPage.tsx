@@ -4,8 +4,6 @@ import {
   createAssignment,
   translateCreateError,
 } from '../lib/assignmentApi'
-import { isSupabaseEnabled } from '../lib/supabaseClient'
-
 function newId() {
   return `f_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
 }
@@ -178,24 +176,12 @@ export function AssignmentBuilderPage({ navigate }: Props) {
       <div className="builder-success page-stack">
         <div className="panel success-hero">
           <p className="success-badge">تم ✓</p>
-          <h1 className="page-title">الواجب جاهز للمشاركة</h1>
-          <p className="muted">
-            انسخ <strong>رابط الطالب</strong> وأرسله عبر المنصة التي تفضّلها. احفظ{' '}
-            <strong>رابط المراجعة</strong> لنفسك — لا يشارك مع الطلاب.
-          </p>
-
-          {!isSupabaseEnabled() ? (
-            <p className="inline-hint" role="status">
-              الوضع الحالي: بيانات محلية في هذا المتصفح. للإنتاج: اربط Supabase ونفّذ
-              ملفات SQL في مجلد <code className="inline-code">supabase</code>.
-            </p>
-          ) : null}
+          <h1 className="page-title">تم الإنشاء</h1>
         </div>
 
         <div className="success-link-grid">
           <section className="section-card panel share-card share-card-student">
             <h2 className="section-card-title">رابط الطالب</h2>
-            <p className="muted small">للإرسال في المجموعة أو البريد أو LMS.</p>
             <code className="share-link-box">{studentUrl}</code>
             <button
               type="button"
@@ -208,7 +194,6 @@ export function AssignmentBuilderPage({ navigate }: Props) {
 
           <section className="section-card panel share-card share-card-teacher">
             <h2 className="section-card-title">رابط المراجعة</h2>
-            <p className="muted small">خاص بالأستاذ — لمتابعة التسليمات.</p>
             <code className="share-link-box">{teacherUrl}</code>
             <button
               type="button"
@@ -218,7 +203,9 @@ export function AssignmentBuilderPage({ navigate }: Props) {
               {copied === 't' ? 'تم النسخ ✓' : 'نسخ الرابط'}
             </button>
             <p className="muted small" style={{ marginTop: '0.65rem' }}>
-              كود المشاركة: <strong className="mono-strong">{done.shareCode}</strong>
+              <strong className="mono-strong" dir="ltr">
+                {done.shareCode}
+              </strong>
             </p>
           </section>
         </div>
@@ -248,28 +235,11 @@ export function AssignmentBuilderPage({ navigate }: Props) {
   return (
     <form className="page-stack builder-page" onSubmit={onSubmit}>
       <div className="panel builder-intro">
-        <h1 className="page-title">إنشاء واجب جديد</h1>
-        <p className="muted">
-          ثلاث خطوات منطقية: بيانات الواجب ← بناء الحقول ← توليد الروابط بعد الحفظ.
-        </p>
-        <ol className="stepper" aria-label="التقدم">
-          <li className="stepper-step is-current">
-            <span className="stepper-dot">1</span>
-            بيانات الواجب
-          </li>
-          <li className="stepper-step is-current">
-            <span className="stepper-dot">2</span>
-            الحقول والأسئلة
-          </li>
-          <li className="stepper-step">
-            <span className="stepper-dot">3</span>
-            الروابط
-          </li>
-        </ol>
+        <h1 className="page-title">واجب جديد</h1>
       </div>
 
       <section className="section-card panel builder-section">
-        <h2 className="section-card-title">١ — معلومات الواجب</h2>
+        <h2 className="section-card-title">معلومات الواجب</h2>
         <label className="field">
           <span className="field-label">عنوان الواجب *</span>
         <input
@@ -306,19 +276,16 @@ export function AssignmentBuilderPage({ navigate }: Props) {
         <input
           className="input"
           dir="ltr"
-          placeholder="إن تُرك فارغًا يُولَّد تلقائيًا"
+          placeholder="تلقائي"
           value={shareCodeOpt}
           onChange={(e) => setShareCodeOpt(e.target.value.toUpperCase())}
         />
-        <span className="muted small">
-          أحرف إنجليزية وأرقام و _ و -، بين 4 و 40 حرفًا.
-        </span>
       </label>
       </section>
 
       <section className="section-card panel builder-section">
         <div className="builder-fields-head">
-        <h2 className="section-card-title">٢ — حقول النموذج للطالب</h2>
+        <h2 className="section-card-title">حقول الطالب</h2>
         <div className="builder-field-actions">
           <button type="button" className="btn secondary" onClick={insertNamePreset}>
             تعبئة «اسم الطالب»
@@ -466,7 +433,7 @@ export function AssignmentBuilderPage({ navigate }: Props) {
           رجوع
         </button>
         <button type="submit" className="btn primary" disabled={busy}>
-          {busy ? 'جارٍ الإنشاء…' : '٣ — إنشاء الواجب وتوليد الروابط'}
+          {busy ? 'جارٍ الإنشاء…' : 'إنشاء الواجب'}
         </button>
       </div>
       </div>

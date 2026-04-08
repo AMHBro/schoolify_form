@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import './App.css'
 import { AppHeader } from './components/AppHeader'
+import { showSystemAdminUi } from './lib/featureFlags'
 import { parsePath } from './lib/route'
 import { usePathname } from './hooks/usePathname'
 import { getTeacherSession } from './lib/teacherSession'
@@ -34,9 +35,24 @@ function App() {
   }, [pathname, search, navigate])
 
   let body: ReactNode
-  if (route.name === 'system')
-    body = <SystemAdminPage navigate={navigate} />
-  else if (route.name === 'teacherNew')
+  if (route.name === 'system') {
+    body = showSystemAdminUi() ? (
+      <SystemAdminPage navigate={navigate} />
+    ) : (
+      <div className="panel system-admin-shell">
+        <p className="muted">الصفحة غير متوفرة.</p>
+        <div className="form-actions" style={{ marginTop: '1rem' }}>
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={() => navigate('/')}
+          >
+            الرئيسية
+          </button>
+        </div>
+      </div>
+    )
+  } else if (route.name === 'teacherNew')
     body = <AssignmentBuilderPage navigate={navigate} />
   else if (route.name === 'teacher')
     body = (

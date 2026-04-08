@@ -253,36 +253,35 @@ export async function fetchTeacherDashboard(
 
 export function translateAuthError(message: string): string {
   const m = (message || '').toLowerCase()
-  if (m.includes('invalid_credentials'))
-    return 'الاسم الكامل أو رقم الجوال غير مطابقين لما في قاعدة البيانات. نفّذ seed_demo.sql أو أضف المعلّم من لوحة SQL.'
+  if (m.includes('invalid_credentials')) return 'بيانات الدخول غير صحيحة.'
   if (m.includes('phone_taken')) return 'هذا الرقم مسجّل مسبقًا.'
   if (m.includes('phone_invalid')) return 'رقم الجوال غير صالح.'
-  if (m.includes('name_required')) return 'الاسم مطلوب (حرفان على الأقل).'
-  if (m.includes('session_invalid')) return 'انتهت الجلسة. سجّل الدخول مجددًا.'
+  if (m.includes('name_required')) return 'الاسم مطلوب.'
+  if (m.includes('session_invalid')) return 'انتهت الجلسة.'
   if (
     m.includes('could not find') ||
     m.includes('does not exist') ||
     m.includes('schema cache') ||
     m.includes('42883')
   ) {
-    return 'دالة تسجيل الدخول غير موجودة. نفّذ ملف هجرة المعلّمين 20260408210000_teachers_sessions.sql في Supabase.'
+    return 'تعذّر تسجيل الدخول.'
   }
   if (m.includes('permission denied') || m.includes('42501')) {
-    return 'الصلاحيات تمنع هذا الإجراء. تحقق من منح تنفيذ الدالة لـ anon في SQL.'
+    return 'غير مسموح.'
   }
   if (m.includes('jwt') || m.includes('apikey') || m.includes('invalid api')) {
-    return 'مفتاح Supabase غير صالح. راجع VITE_SUPABASE_ANON_KEY في الإعدادات.'
+    return 'إعداد الاتصال غير صالح.'
   }
   if (m.includes('failed to fetch') || m.includes('network')) {
-    return 'تعذّر الاتصال بالخادم. تحقق من الشبكة ومن VITE_SUPABASE_URL.'
+    return 'تعذّر الاتصال.'
   }
   if (m.includes('login_parse_failed')) {
-    return 'استجابة غير متوقعة من الخادم بعد تسجيل الدخول. أعد المحاولة أو راجع وحدة التحكم في المتصفح.'
+    return 'أعد المحاولة.'
   }
   if (message.trim()) {
-    return `تعذّر إكمال العملية: ${message.trim()}`
+    return 'تعذّر إكمال العملية.'
   }
-  return 'تعذّر إكمال العملية. تحقق من تنفيذ ملفات SQL ومن بيانات المعلّم التجريبي.'
+  return 'تعذّر إكمال العملية.'
 }
 
 export async function teacherRegister(

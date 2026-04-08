@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { isSupabaseEnabled } from '../lib/supabaseClient'
 import {
   systemAdminDeleteAssignment,
   systemAdminListAssignments,
@@ -48,13 +47,13 @@ export function SystemAdminPage({ navigate }: Props) {
         systemAdminListTeachers(key),
         systemAdminListAssignments(key),
       ])
-      if (!tr.ok) {
+      if (tr.ok === false) {
         clearSystemAdminSecret()
         setUnlocked(false)
         setUnlockErr(tr.message)
         return
       }
-      if (!ar.ok) {
+      if (ar.ok === false) {
         clearSystemAdminSecret()
         setUnlocked(false)
         setUnlockErr(ar.message)
@@ -77,7 +76,7 @@ export function SystemAdminPage({ navigate }: Props) {
       }
       const r = await systemAdminListTeachers(existing)
       if (!on) return
-      if (!r.ok) {
+      if (r.ok === false) {
         clearSystemAdminSecret()
         setUnlockErr(r.message)
         setBooting(false)
@@ -85,7 +84,7 @@ export function SystemAdminPage({ navigate }: Props) {
       }
       const ar = await systemAdminListAssignments(existing)
       if (!on) return
-      if (!ar.ok) {
+      if (ar.ok === false) {
         clearSystemAdminSecret()
         setUnlockErr(ar.message)
         setBooting(false)
@@ -109,12 +108,12 @@ export function SystemAdminPage({ navigate }: Props) {
     try {
       const trimmed = secretInput.trim()
       const r = await systemAdminListTeachers(trimmed)
-      if (!r.ok) {
+      if (r.ok === false) {
         setUnlockErr(r.message)
         return
       }
       const ar = await systemAdminListAssignments(trimmed)
-      if (!ar.ok) {
+      if (ar.ok === false) {
         setUnlockErr(ar.message)
         return
       }
@@ -143,14 +142,14 @@ export function SystemAdminPage({ navigate }: Props) {
     setAddMsg(null)
     setAddBusy(true)
     try {
-      const r = await systemAdminRegisterTeacher(key, newName, newPhone)
-      if (!r.ok) {
+      const r = await systemAdminRegisterTeacher(key, newName.trim(), newPhone)
+      if (r.ok === false) {
         setAddMsg(r.message)
         return
       }
       setNewName('')
       setNewPhone('')
-      setAddMsg('تمت إضافة المعلّم.')
+      setAddMsg('تم الحفظ.')
       await refreshLists()
     } finally {
       setAddBusy(false)
@@ -160,14 +159,12 @@ export function SystemAdminPage({ navigate }: Props) {
   const onDeleteAssignment = async (row: SystemAdminAssignmentRow) => {
     const key = getSystemAdminSecret()
     if (!key) return
-    const ok = window.confirm(
-      `حذف الواجب «${row.title}» (${row.shareCode})؟\nسيتم حذف التسليمات المرتبطة من قاعدة البيانات. ملفات التخزين قد تبقى حتى تنظيف يدوي.`
-    )
+    const ok = window.confirm(`حذف «${row.title}»؟`)
     if (!ok) return
     setDeleteBusyId(row.id)
     try {
       const r = await systemAdminDeleteAssignment(key, row.id)
-      if (!r.ok) {
+      if (r.ok === false) {
         window.alert(r.message)
         return
       }
@@ -176,23 +173,6 @@ export function SystemAdminPage({ navigate }: Props) {
       setDeleteBusyId(null)
     }
   }
-
-  const mockHint =
-    !isSupabaseEnabled() ? (
-      <p className="muted small" style={{ marginTop: '0.75rem' }}>
-        وضع محلي: المفتاح الافتراضي{' '}
-        <code className="inline-code">schoolify-dev-admin</code> ما لم تضبط{' '}
-        <code className="inline-code">VITE_SYSTEM_ADMIN_MOCK_KEY</code>.
-      </p>
-    ) : (
-      <p className="muted small" style={{ marginTop: '0.75rem' }}>
-        على Supabase: عيّن المفتاح عبر{' '}
-        <code className="inline-code" dir="ltr">
-          UPDATE system_admin_config SET secret_key = &apos;...&apos;;
-        </code>{' '}
-        ثم أدخل نفس القيمة هنا.
-      </p>
-    )
 
   if (booting) {
     return (
@@ -206,10 +186,7 @@ export function SystemAdminPage({ navigate }: Props) {
     return (
       <div className="panel system-admin-shell">
         <header className="form-head">
-          <h1 className="form-title">لوحة إدارة النظام</h1>
-          <p className="muted">
-            أدخل مفتاح الإدارة السري. لا يستبدل تسجيل دخول الأستاذ.
-          </p>
+          <h1 className="form-title">إدارة النظام</h1>
         </header>
         <form
           onSubmit={onUnlock}
@@ -230,7 +207,6 @@ export function SystemAdminPage({ navigate }: Props) {
             />
           </label>
           {unlockErr ? <p className="form-error">{unlockErr}</p> : null}
-          {mockHint}
           <div className="form-actions" style={{ marginTop: '1rem' }}>
             <button type="submit" className="btn primary" disabled={unlockBusy}>
               {unlockBusy ? 'جارٍ التحقق…' : 'متابعة'}
@@ -252,10 +228,7 @@ export function SystemAdminPage({ navigate }: Props) {
     <div className="panel system-admin-shell">
       <header className="form-head system-admin-head">
         <div>
-          <h1 className="form-title">لوحة إدارة النظام</h1>
-          <p className="muted">
-            إضافة معلّمين، عرض الواجبات، وحذف الواجبات.
-          </p>
+          <h1 className="form-title">إدارة النظام</h1>
         </div>
         <div className="system-admin-head-actions">
           <button
@@ -267,7 +240,7 @@ export function SystemAdminPage({ navigate }: Props) {
             {listBusy ? 'جارٍ التحديث…' : 'تحديث القوائم'}
           </button>
           <button type="button" className="btn secondary" onClick={onLogoutAdmin}>
-            مسح مفتاح الإدارة
+            خروج
           </button>
           <button type="button" className="btn secondary" onClick={() => navigate('/')}>
             الرئيسية
@@ -311,11 +284,10 @@ export function SystemAdminPage({ navigate }: Props) {
                 onChange={(e) => setNewName(e.target.value)}
                 required
                 minLength={2}
-                placeholder="اسم المعلّم"
               />
             </label>
             <label className="field">
-              <span className="field-label">الجوال (أرقام)</span>
+              <span className="field-label">رقم الجوال</span>
               <input
                 className="input"
                 dir="ltr"
@@ -323,18 +295,24 @@ export function SystemAdminPage({ navigate }: Props) {
                 value={newPhone}
                 onChange={(e) => setNewPhone(e.target.value)}
                 required
-                placeholder="9665xxxxxxxx"
+                minLength={8}
               />
             </label>
             <div className="form-actions system-admin-add-actions">
               <button type="submit" className="btn primary" disabled={addBusy}>
-                {addBusy ? 'جارٍ الإضافة…' : 'إضافة'}
+                {addBusy ? '…' : 'حفظ'}
               </button>
             </div>
           </form>
-          {addMsg ? <p className="inline-hint small">{addMsg}</p> : null}
+          {addMsg ? (
+            <p
+              className={`inline-hint small ${addMsg === 'تم الحفظ.' ? 'success-hint' : ''}`}
+            >
+              {addMsg}
+            </p>
+          ) : null}
 
-          <h2 className="system-admin-h2">قائمة المعلّمين</h2>
+          <h2 className="system-admin-h2">المعلّمون</h2>
           <div className="table-wrap">
             <table className="data-table">
               <thead>
@@ -373,7 +351,7 @@ export function SystemAdminPage({ navigate }: Props) {
         </div>
       ) : (
         <div className="system-admin-section">
-          <h2 className="system-admin-h2">جميع الواجبات</h2>
+          <h2 className="system-admin-h2">الواجبات</h2>
           <div className="table-wrap">
             <table className="data-table">
               <thead>

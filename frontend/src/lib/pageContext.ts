@@ -1,8 +1,8 @@
 /** نصوص سياقية موحّدة لرأس التطبيق */
 export function getPageContext(pathname: string): { kicker: string; label: string } {
   const p = pathname.replace(/\/+$/, '') || '/'
-  if (p.startsWith('/system'))
-    return { kicker: 'النظام', label: 'لوحة الإدارة' }
+  /* /system بدون أي إشارة في الرأس — الدخول يدويًا من العنوان فقط */
+  if (p.startsWith('/system')) return { kicker: 'Schoolify', label: '' }
   if (p.startsWith('/teacher/new'))
     return { kicker: 'الأستاذ', label: 'إنشاء واجب' }
   if (p.startsWith('/teacher'))

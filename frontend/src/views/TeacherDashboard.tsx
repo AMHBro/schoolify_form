@@ -8,12 +8,9 @@ import {
   listTeacherAssignments,
   type TeacherAssignmentListItem,
 } from '../lib/assignmentApi'
-import { isSupabaseEnabled } from '../lib/supabaseClient'
 import { getTeacherSession } from '../lib/teacherSession'
 
 type SortMode = 'name' | 'submittedAt'
-
-const USE_MOCK = !isSupabaseEnabled()
 
 function sanitizeFolderName(name: string) {
   return name.replace(/[<>:"/\\|?*]/g, '_').slice(0, 80) || 'student'
@@ -209,9 +206,6 @@ export function TeacherDashboard({ navigate, search }: Props) {
       <div className="teacher-welcome page-stack">
         <header className="panel welcome-hero">
           <h1 className="page-title">واجباتي</h1>
-          <p className="lead muted">
-            اختر واجبًا لعرض إجابات الطلاب، أو أنشئ واجبًا جديدًا.
-          </p>
         </header>
 
         <div className="home-actions" style={{ marginBottom: '1rem' }}>
@@ -234,13 +228,7 @@ export function TeacherDashboard({ navigate, search }: Props) {
           <p className="muted">جارٍ التحميل…</p>
         ) : list.length === 0 ? (
           <div className="panel">
-            <p className="muted">لا توجد واجبات بعد. أنشئ أول واجب من الزر أعلاه.</p>
-            {USE_MOCK ? (
-              <p className="muted small">
-                الوضع المحلي: البيانات في هذا المتصفح فقط. مع Supabase تظهر الواجبات
-                لحسابك بعد تسجيل الدخول.
-              </p>
-            ) : null}
+            <p className="muted">لا توجد واجبات.</p>
           </div>
         ) : (
           <ul className="assignment-list">
@@ -326,15 +314,14 @@ export function TeacherDashboard({ navigate, search }: Props) {
       {assignment && (
         <section className="share-banner panel">
           <div>
-            <h2 className="banner-title">مشاركة الواجب</h2>
+            <h2 className="banner-title">مشاركة</h2>
             <p className="muted">
-              رابط الطالب:{' '}
               <code className="inline-code">
                 {`${window.location.origin.replace(/\/$/, '')}${assignment.publicUrl}`}
               </code>
             </p>
             <p className="muted">
-              كود المشاركة: <strong>{assignment.shareCode}</strong>
+              <strong dir="ltr">{assignment.shareCode}</strong>
             </p>
           </div>
         </section>

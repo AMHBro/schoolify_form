@@ -30,7 +30,7 @@ function writeTeachers(rows: MockTeacherRow[]) {
   localStorage.setItem(TEACHERS_KEY, JSON.stringify(rows))
 }
 
-/** نفس معرّف البذرة في seed_demo — معلّم واحد للوضع المحلي دون واجهة «تسجيل جديد» */
+/** بذرة معلّم للوضع المحلي بدون Supabase */
 const DEMO_TEACHER_ID = 'c0e8400e-d29f-41d4-a716-446655440001'
 
 export function ensureMockDemoTeacher() {
