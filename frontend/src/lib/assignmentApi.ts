@@ -29,6 +29,7 @@ import {
   isSupabaseEnabled,
   SUBMISSION_BUCKET,
 } from './supabaseClient'
+import { normalizeTeacherName } from './phoneNormalize'
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -273,8 +274,15 @@ export function translateAuthError(message: string): string {
   if (m.includes('jwt') || m.includes('apikey') || m.includes('invalid api')) {
     return 'إعداد الاتصال غير صالح.'
   }
-  if (m.includes('failed to fetch') || m.includes('network')) {
-    return 'تعذّر الاتصال.'
+  if (
+    m.includes('failed to fetch') ||
+    m.includes('load failed') ||
+    m.includes('networkerror') ||
+    m.includes('network request failed') ||
+    (m.includes('typeerror') && m.includes('fetch')) ||
+    m.includes('network')
+  ) {
+    return 'تعذّر الاتصال بالخادم. تحقق من الإنترنت وإعدادات المشروع على الاستضافة.'
   }
   if (m.includes('login_parse_failed')) {
     return 'أعد المحاولة.'
@@ -297,7 +305,8 @@ export async function teacherRegister(
   }
   const sb = getSupabaseClient()!
   const { error } = await sb.rpc('teacher_register', {
-    p_full_name: fullName.trim(),
+    p_full_name: normalizeTeacherName(fullName),
+    /** رقم الجوال كما أدخله المستخدم؛ التطبيع فقط في Postgres ليتطابق الإدخال من الداشبورد والرئيسية */
     p_phone: phone.trim(),
   })
   if (error) return { ok: false, message: translateAuthError(error.message) }
@@ -314,18 +323,32 @@ export async function teacherLogin(
     if ('error' in r) return { ok: false, message: translateAuthError(r.error) }
     return { ok: true }
   }
+  const name = normalizeTeacherName(fullName)
+  const phoneRaw = phone.trim()
   const sb = getSupabaseClient()!
-  const { data, error } = await sb.rpc('teacher_login', {
-    p_full_name: fullName.trim(),
-    p_phone: phone.trim(),
-  })
-  if (error) {
-    const errRec = error as { message: string; details?: string; hint?: string }
-    const combined = [errRec.message, errRec.details, errRec.hint]
-      .filter(Boolean)
-      .join(' ')
-    console.warn('[Schoolify] teacher_login', combined)
-    return { ok: false, message: translateAuthError(combined) }
+  let data: unknown
+  try {
+    const r = await sb.rpc('teacher_login', {
+      p_full_name: name,
+      p_phone: phoneRaw,
+    })
+    data = r.data
+    if (r.error) {
+      const errRec = r.error as {
+        message: string
+        details?: string
+        hint?: string
+      }
+      const combined = [errRec.message, errRec.details, errRec.hint]
+        .filter(Boolean)
+        .join(' ')
+      console.warn('[Schoolify] teacher_login', combined)
+      return { ok: false, message: translateAuthError(combined) }
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    console.warn('[Schoolify] teacher_login', msg)
+    return { ok: false, message: translateAuthError(msg) }
   }
 
   const raw = parseRpcAssignmentPayload(data)
@@ -336,7 +359,7 @@ export async function teacherLogin(
 
   const tokenVal = raw.token ?? raw.Token
   const teacherIdVal = raw.teacherId ?? raw.teacher_id
-  const nameVal = raw.fullName ?? raw.full_name ?? fullName.trim()
+  const nameVal = raw.fullName ?? raw.full_name ?? name
 
   if (
     tokenVal == null ||
@@ -516,7 +539,7 @@ export async function systemAdminRegisterTeacher(
   const sb = getSupabaseClient()!
   const { error } = await sb.rpc('system_admin_register_teacher', {
     p_secret: adminKey.trim(),
-    p_full_name: fullName.trim(),
+    p_full_name: normalizeTeacherName(fullName),
     p_phone: phone.trim(),
   })
   if (error)

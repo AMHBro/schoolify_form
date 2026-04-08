@@ -9,6 +9,7 @@ import {
   type SystemAdminAssignmentRow,
   type SystemAdminTeacherRow,
 } from '../lib/assignmentApi'
+import { setPostRegisterLogin } from '../lib/postRegisterLogin'
 import {
   clearSystemAdminSecret,
   getSystemAdminSecret,
@@ -159,7 +160,9 @@ export function SystemAdminPage({ navigate }: Props) {
       setNewPhone('')
       const login = await teacherLogin(savedName, savedPhone)
       if (login.ok === false) {
-        setAddMsg(`تم الحفظ. ${login.message}`)
+        setPostRegisterLogin({ fullName: savedName, phone: savedPhone })
+        setAddMsg(`تم الحفظ. جارٍ فتح الصفحة الرئيسية لمحاولة الدخول تلقائيًا…`)
+        navigate('/')
         return
       }
       navigate('/teacher/new')

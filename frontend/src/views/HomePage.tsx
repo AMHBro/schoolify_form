@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { teacherLogin } from '../lib/assignmentApi'
+import { consumePostRegisterLogin } from '../lib/postRegisterLogin'
 import { ensureMockDemoTeacher } from '../lib/teacherMockStore'
 import { getTeacherSession } from '../lib/teacherSession'
 import { isSupabaseEnabled } from '../lib/supabaseClient'
@@ -20,6 +21,26 @@ export function HomePage({ go }: Props) {
     if (!isSupabaseEnabled()) {
       ensureMockDemoTeacher()
     }
+  }, [go])
+
+  /** بيانات حُفظت من لوحة الإدارة بعد إضافة معلّم — نفس الحقول + محاولة دخول */
+  useEffect(() => {
+    if (getTeacherSession()) return
+    const pending = consumePostRegisterLogin()
+    if (!pending) return
+    setFullName(pending.fullName)
+    setPhone(pending.phone)
+    setErr(null)
+    setBusy(true)
+    void (async () => {
+      const r = await teacherLogin(pending.fullName, pending.phone)
+      setBusy(false)
+      if (r.ok) {
+        go('/teacher/new')
+        return
+      }
+      setErr(r.message)
+    })()
   }, [go])
 
   const onLogin = async (e: React.FormEvent) => {
