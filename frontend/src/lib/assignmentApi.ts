@@ -55,17 +55,46 @@ function parseRpcAssignmentPayload(data: unknown): Record<string, unknown> | nul
   return null
 }
 
+function normalizeFieldType(raw: unknown): AssignmentField['type'] {
+  const t = String(raw ?? 'text').trim().toLowerCase()
+  if (t === 'images' || t === 'image' || t === 'img' || t === 'photos')
+    return 'images'
+  if (t === 'files' || t === 'file' || t === 'attachments') return 'files'
+  return 'text'
+}
+
 function parseFieldsColumn(raw: unknown): AssignmentField[] {
-  if (Array.isArray(raw)) return raw as AssignmentField[]
-  if (typeof raw === 'string') {
+  let arr: unknown[] = []
+  if (Array.isArray(raw)) arr = raw
+  else if (typeof raw === 'string') {
     try {
       const p = JSON.parse(raw) as unknown
-      return Array.isArray(p) ? (p as AssignmentField[]) : []
+      if (Array.isArray(p)) arr = p
     } catch {
       return []
     }
+  } else return []
+
+  const out: AssignmentField[] = []
+  for (const row of arr) {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) continue
+    const o = row as Record<string, unknown>
+    const id = String(o.id ?? '').trim()
+    const label = String(o.label ?? '').trim()
+    if (!id || !label) continue
+    const type = normalizeFieldType(o.type)
+    const f: AssignmentField = {
+      id,
+      type,
+      label,
+      required: Boolean(o.required),
+    }
+    if (typeof o.accept === 'string' && o.accept.trim()) f.accept = o.accept.trim()
+    if (typeof o.maxFiles === 'number' && Number.isFinite(o.maxFiles))
+      f.maxFiles = o.maxFiles
+    out.push(f)
   }
-  return []
+  return out
 }
 
 function mapDbRowToAssignment(raw: Record<string, unknown>): AssignmentSchema {

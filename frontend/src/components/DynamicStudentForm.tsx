@@ -21,7 +21,9 @@ function isDeadlinePassed(deadlineIso?: string) {
 
 function acceptForField(f: AssignmentField): string {
   if (f.accept) return f.accept
-  if (f.type === 'images') return 'image/jpeg,image/png,image/webp'
+  if (f.type === 'images') {
+    return 'image/*,image/jpeg,image/png,image/webp,image/heic,image/heif'
+  }
   return '*'
 }
 
