@@ -64,6 +64,10 @@ export function HomePage({ go }: Props) {
     <div className="home-wrap">
       <header className="home-hero panel">
         <h1 className="home-title">تسجيل دخول</h1>
+        <p className="home-lead muted" style={{ marginTop: '0.5rem', maxWidth: '32rem' }}>
+          يُقارَن الاسم ورقم الجوال مع بيانات المعلّمين المسجّلين. إذا تطابقتان مع السجلّ، يتم تسجيل
+          الدخول تلقائيًا.
+        </p>
       </header>
 
       <div className="section-card panel" style={{ maxWidth: '28rem', margin: '0 auto' }}>
@@ -74,7 +78,10 @@ export function HomePage({ go }: Props) {
               className="input"
               name="schoolify-teacher-name"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) => {
+                setFullName(e.target.value)
+                if (err) setErr(null)
+              }}
               autoComplete="off"
               required
               minLength={2}
@@ -88,15 +95,19 @@ export function HomePage({ go }: Props) {
               dir="ltr"
               inputMode="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => {
+                setPhone(e.target.value)
+                if (err) setErr(null)
+              }}
               autoComplete="off"
               required
+              minLength={8}
             />
           </label>
           {err ? <p className="form-error">{err}</p> : null}
           <div className="form-actions" style={{ marginTop: '1rem' }}>
             <button type="submit" className="btn primary" disabled={busy}>
-              {busy ? '…' : 'دخول'}
+              {busy ? 'جارٍ التحقق…' : 'تحقق وتسجيل الدخول'}
             </button>
           </div>
         </form>
