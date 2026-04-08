@@ -30,3 +30,17 @@ on conflict (share_code) do update set
   deadline_at = excluded.deadline_at,
   fields = excluded.fields,
   teacher_view_token = excluded.teacher_view_token;
+
+-- بعد تشغيل supabase/migrations/20260408210000_teachers_sessions.sql:
+-- معلّم تجريبي: سجّل الدخول بالاسم «معلّم تجريبي» والرقم «966500000000»
+insert into public.teachers (id, full_name, phone_e164)
+values (
+  'c0e8400e-d29f-41d4-a716-446655440001'::uuid,
+  'معلّم تجريبي',
+  '966500000000'
+)
+on conflict (phone_e164) do nothing;
+
+update public.assignments
+set teacher_id = 'c0e8400e-d29f-41d4-a716-446655440001'::uuid
+where id = 'a0e8400e-d29f-41d4-a716-446655440000'::uuid;

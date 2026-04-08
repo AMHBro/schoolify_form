@@ -856,3 +856,60 @@
   max-width: 40rem;
   margin-inline: auto;
 }
+
+.app-shell--student {
+  background: var(--surface);
+}
+
+.main--student {
+  padding-top: 1.35rem;
+}
+
+.assignment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.assignment-list-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  text-align: start;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.assignment-list-item:hover {
+  border-color: rgba(107, 90, 140, 0.35);
+  box-shadow: var(--shadow);
+}
+
+.assignment-list-main {
+  min-width: 0;
+}
+
+.assignment-list-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  color: var(--text-strong);
+}
+
+.assignment-list-chevron {
+  flex-shrink: 0;
+  font-size: 1.35rem;
+  color: var(--muted);
+  transform: rotate(-90deg);
+}
+
+.home-actions .btn.secondary.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}

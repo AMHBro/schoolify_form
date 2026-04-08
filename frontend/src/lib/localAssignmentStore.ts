@@ -8,11 +8,13 @@ const KEY = 'schoolify.assignments.v1'
 
 export type StoredAssignment = {
   id: string
+  teacherId?: string
   teacherViewToken: string
   shareCode: string
   title: string
   description?: string
   deadlineAt?: string
+  createdAt?: string
   fields: AssignmentField[]
   submissions: SubmissionRecord[]
 }
@@ -54,6 +56,19 @@ export function mockFindByIdAndToken(
   return (
     readAll().find((a) => a.id === id && a.teacherViewToken === token) ?? null
   )
+}
+
+export function mockFindByIdForTeacher(
+  id: string,
+  teacherId: string
+): StoredAssignment | null {
+  return (
+    readAll().find((a) => a.id === id && a.teacherId === teacherId) ?? null
+  )
+}
+
+export function mockListForTeacher(teacherId: string): StoredAssignment[] {
+  return readAll().filter((a) => a.teacherId === teacherId)
 }
 
 export function toSchema(a: StoredAssignment): AssignmentSchema {

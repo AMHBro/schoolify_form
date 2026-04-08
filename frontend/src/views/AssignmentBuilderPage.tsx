@@ -167,7 +167,7 @@ export function AssignmentBuilderPage({ navigate }: Props) {
   if (done) {
     const origin = window.location.origin.replace(/\/$/, '')
     const studentUrl = `${origin}/s/${encodeURIComponent(done.shareCode)}`
-    const teacherUrl = `${origin}/teacher?aid=${encodeURIComponent(done.id)}&tv=${encodeURIComponent(done.teacherViewToken)}`
+    const teacherUrl = `${origin}/teacher?aid=${encodeURIComponent(done.id)}`
 
     const onCopy = (key: string, text: string) => {
       void copyText(text).then((ok) => setCopied(ok ? key : null))
@@ -227,9 +227,7 @@ export function AssignmentBuilderPage({ navigate }: Props) {
             type="button"
             className="btn primary"
             onClick={() =>
-              navigate(
-                `/teacher?aid=${encodeURIComponent(done.id)}&tv=${encodeURIComponent(done.teacherViewToken)}`
-              )
+              navigate(`/teacher?aid=${encodeURIComponent(done.id)}`)
             }
           >
             فتح لوحة المراجعة

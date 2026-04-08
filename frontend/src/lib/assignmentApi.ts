@@ -8,10 +8,14 @@ import {
   mockAppendSubmission,
   mockCreateAssignment as persistMockAssignment,
   mockFindByIdAndToken,
+  mockFindByIdForTeacher,
   mockFindByShareCode,
   mockGenerateShareCode,
+  mockListForTeacher,
   toSchema,
 } from './localAssignmentStore'
+import { mockLoginTeacher, mockRegisterTeacher } from './teacherMockStore'
+import { getTeacherSession, setTeacherSession } from './teacherSession'
 import {
   getSupabaseClient,
   isSupabaseEnabled,
@@ -153,6 +157,15 @@ export type TeacherDashboardData = {
   submissions: SubmissionRecord[]
 }
 
+export type TeacherAssignmentListItem = {
+  id: string
+  title: string
+  shareCode: string
+  deadlineAt: string | null
+  createdAt: string | null
+  submissionCount: number
+}
+
 type TeacherCreds = { assignmentId: string; teacherToken: string }
 
 function resolveTeacherCreds(explicit?: TeacherCreds | null): TeacherCreds {
@@ -202,6 +215,153 @@ export async function fetchTeacherDashboard(
   return { assignment, submissions }
 }
 
+export function translateAuthError(message: string): string {
+  if (message.includes('invalid_credentials'))
+    return 'الاسم الكامل أو رقم الجوال غير مطابقين.'
+  if (message.includes('phone_taken')) return 'هذا الرقم مسجّل مسبقًا.'
+  if (message.includes('phone_invalid')) return 'رقم الجوال غير صالح.'
+  if (message.includes('name_required')) return 'الاسم مطلوب (حرفان على الأقل).'
+  if (message.includes('session_invalid')) return 'انتهت الجلسة. سجّل الدخول مجددًا.'
+  return 'تعذّر إكمال العملية.'
+}
+
+export async function teacherRegister(
+  fullName: string,
+  phone: string
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (USE_MOCK) {
+    await delay(40)
+    const r = mockRegisterTeacher(fullName, phone)
+    if (!r.ok) return { ok: false, message: translateAuthError(r.code) }
+    return { ok: true }
+  }
+  const sb = getSupabaseClient()!
+  const { error } = await sb.rpc('teacher_register', {
+    p_full_name: fullName.trim(),
+    p_phone: phone.trim(),
+  })
+  if (error) return { ok: false, message: translateAuthError(error.message) }
+  return { ok: true }
+}
+
+export async function teacherLogin(
+  fullName: string,
+  phone: string
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (USE_MOCK) {
+    await delay(40)
+    const r = mockLoginTeacher(fullName, phone)
+    if ('error' in r) return { ok: false, message: translateAuthError(r.error) }
+    return { ok: true }
+  }
+  const sb = getSupabaseClient()!
+  const { data, error } = await sb.rpc('teacher_login', {
+    p_full_name: fullName.trim(),
+    p_phone: phone.trim(),
+  })
+  if (error) return { ok: false, message: translateAuthError(error.message) }
+  const raw = data as Record<string, unknown> | null
+  if (!raw?.token || !raw?.teacherId) {
+    return { ok: false, message: translateAuthError('') }
+  }
+  setTeacherSession({
+    token: String(raw.token),
+    teacherId: String(raw.teacherId ?? raw.teacher_id ?? ''),
+    fullName: String(raw.fullName ?? raw.full_name ?? fullName.trim()),
+  })
+  return { ok: true }
+}
+
+function parseAssignmentListJson(data: unknown): TeacherAssignmentListItem[] {
+  if (data == null) return []
+  let rows: unknown = data
+  if (typeof data === 'string') {
+    try {
+      rows = JSON.parse(data) as unknown
+    } catch {
+      return []
+    }
+  }
+  if (!Array.isArray(rows)) return []
+  return rows.map((r) => {
+    const o = r as Record<string, unknown>
+    return {
+      id: String(o.id ?? ''),
+      title: String(o.title ?? ''),
+      shareCode: String(o.shareCode ?? o.share_code ?? ''),
+      deadlineAt: o.deadlineAt != null ? String(o.deadlineAt) : null,
+      createdAt: o.createdAt != null ? String(o.createdAt) : null,
+      submissionCount: Number(o.submissionCount ?? 0),
+    }
+  })
+}
+
+export async function listTeacherAssignments(): Promise<
+  TeacherAssignmentListItem[]
+> {
+  const sess = getTeacherSession()
+  if (!sess) return []
+  if (USE_MOCK) {
+    await delay(40)
+    return mockListForTeacher(sess.teacherId)
+      .map((a) => ({
+        id: a.id,
+        title: a.title,
+        shareCode: a.shareCode,
+        deadlineAt: a.deadlineAt ?? null,
+        createdAt: a.createdAt ?? null,
+        submissionCount: a.submissions.length,
+      }))
+      .sort((x, y) => {
+        const tx = x.createdAt ? new Date(x.createdAt).getTime() : 0
+        const ty = y.createdAt ? new Date(y.createdAt).getTime() : 0
+        return ty - tx
+      })
+  }
+  const sb = getSupabaseClient()!
+  const { data, error } = await sb.rpc('list_teacher_assignments', {
+    p_session_token: sess.token,
+  })
+  if (error) {
+    console.warn('[Schoolify] list_teacher_assignments', error.message)
+    return []
+  }
+  return parseAssignmentListJson(data)
+}
+
+export async function fetchTeacherDashboardForSession(
+  assignmentId: string
+): Promise<TeacherDashboardData> {
+  const sess = getTeacherSession()
+  if (!sess) throw new Error('NO_CREDS')
+  if (USE_MOCK) {
+    await delay(60)
+    const row = mockFindByIdForTeacher(assignmentId, sess.teacherId)
+    if (!row) throw new Error('NOT_FOUND')
+    return {
+      assignment: toSchema(row),
+      submissions: row.submissions,
+    }
+  }
+  const sb = getSupabaseClient()!
+  const { data, error } = await sb.rpc('get_teacher_dashboard_for_session', {
+    p_session_token: sess.token,
+    p_assignment_id: assignmentId,
+  })
+  if (error) throw error
+  if (!data || typeof data !== 'object') throw new Error('EMPTY')
+  const payload = data as {
+    assignment: Record<string, unknown>
+    submissions: Record<string, unknown>[]
+  }
+  const url = import.meta.env.VITE_SUPABASE_URL!.replace(/\/+$/, '')
+  const assignment = mapDbRowToAssignment(payload.assignment)
+  const submissions = (payload.submissions ?? []).map((s) =>
+    mapTeacherSubmission(s, url)
+  )
+  return { assignment, submissions }
+}
+
 export function translateCreateError(message: string): string {
   if (message.includes('title_required')) return 'عنوان الواجب مطلوب.'
   if (message.includes('fields_required'))
@@ -209,6 +369,8 @@ export function translateCreateError(message: string): string {
   if (message.includes('share_code_taken')) return 'كود المشاركة مستخدم مسبقًا.'
   if (message.includes('share_code_length')) return 'طول الكود غير مناسب (4–40).'
   if (message.includes('share_code_format')) return 'الكود يقبل أحرفًا إنجليزية وأرقامًا و _ و - فقط.'
+  if (message.includes('session_invalid') || message.includes('session_required'))
+    return 'انتهت الجلسة أو لم تسجّل الدخول. أعد تسجيل الدخول من الصفحة الرئيسية.'
   return 'تعذّر إنشاء الواجب.'
 }
 
@@ -218,6 +380,9 @@ export async function createAssignment(
   const title = input.title.trim()
   if (!title) throw new Error('title_required')
   if (!input.fields?.length) throw new Error('fields_required')
+
+  const sess = getTeacherSession()
+  if (!sess) throw new Error('session_required')
 
   if (USE_MOCK) {
     await delay(120)
@@ -233,18 +398,21 @@ export async function createAssignment(
     const teacherViewToken = crypto.randomUUID()
     persistMockAssignment({
       id,
+      teacherId: sess.teacherId,
       teacherViewToken,
       shareCode: code,
       title,
       description: input.description?.trim() || undefined,
       deadlineAt: input.deadlineAt?.trim() || undefined,
+      createdAt: new Date().toISOString(),
       fields: input.fields,
     })
     return { id, shareCode: code, teacherViewToken }
   }
 
   const sb = getSupabaseClient()!
-  const { data, error } = await sb.rpc('create_assignment', {
+  const { data, error } = await sb.rpc('create_assignment_session', {
+    p_session_token: sess.token,
     p_title: title,
     p_description: input.description?.trim() ?? null,
     p_deadline_at: input.deadlineAt
@@ -307,10 +475,20 @@ function parseSubmissionForm(fd: FormData): {
 }
 
 function translateSubmitError(message: string): string {
-  if (message.includes('not_found')) return 'الواجب غير موجود.'
-  if (message.includes('deadline_passed')) return 'انتهى موعد التسليم.'
-  if (message.includes('invalid_submission')) return 'تعذّر تسجيل الملف.'
-  return 'تعذّر الإرسال.'
+  const m = message.toLowerCase()
+  if (m.includes('not_found')) return 'الواجب غير موجود.'
+  if (m.includes('deadline_passed')) return 'انتهى موعد التسليم.'
+  if (m.includes('invalid_submission')) return 'تعذّر تسجيل الملف.'
+  if (m.includes('mime') || m.includes('mime type')) {
+    return 'نوع الملف غير مسموح. جرّب PDF أو صورة، أو راجع إعدادات التخزين.'
+  }
+  if (m.includes('payload too large') || m.includes('file_size_limit')) {
+    return 'حجم الملف أكبر من المسموح.'
+  }
+  if (m.includes('row-level security') || m.includes('policy')) {
+    return 'رفض الخادم للملف. تحقق من سياسات التخزين في Supabase.'
+  }
+  return message.trim() ? `تعذّر الإرسال: ${message}` : 'تعذّر الإرسال.'
 }
 
 export async function submitAssignment(
@@ -355,9 +533,12 @@ export async function submitAssignment(
   const sb = getSupabaseClient()!
   const { assignmentId, answers, fileRows } = parseSubmissionForm(payload)
 
+  const answersJson: Record<string, string> = { ...answers }
+  delete answersJson.assignment_id
+
   const { data: submissionId, error: createErr } = await sb.rpc(
     'create_submission',
-    { p_share_code: normalizeShareCode(shareCode), p_answers: answers }
+    { p_share_code: normalizeShareCode(shareCode), p_answers: answersJson }
   )
 
   if (createErr || !submissionId) {

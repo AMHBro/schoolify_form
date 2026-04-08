@@ -4,7 +4,7 @@ export function getPageContext(pathname: string): { kicker: string; label: strin
   if (p.startsWith('/teacher/new'))
     return { kicker: 'الأستاذ', label: 'إنشاء واجب' }
   if (p.startsWith('/teacher'))
-    return { kicker: 'الأستاذ', label: 'لوحة المراجعة' }
+    return { kicker: 'الأستاذ', label: 'الواجبات والتسليمات' }
   if (p.startsWith('/s/')) return { kicker: 'طالب', label: 'نموذج التسليم' }
-  return { kicker: 'Schoolify', label: 'التسليم الدراسي' }
+  return { kicker: 'أستاذ', label: 'تسجيل الدخول' }
 }

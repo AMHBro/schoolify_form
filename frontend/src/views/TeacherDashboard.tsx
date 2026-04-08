@@ -2,11 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import JSZip from 'jszip'
 import { Lightbox } from '../components/Lightbox'
 import type { AssignmentSchema, SubmissionRecord } from '../types/assignment'
-import { fetchTeacherDashboard } from '../lib/assignmentApi'
+import {
+  fetchTeacherDashboard,
+  fetchTeacherDashboardForSession,
+  listTeacherAssignments,
+  type TeacherAssignmentListItem,
+} from '../lib/assignmentApi'
 import { isSupabaseEnabled } from '../lib/supabaseClient'
+import { getTeacherSession } from '../lib/teacherSession'
 
 type SortMode = 'name' | 'submittedAt'
-type View = 'welcome' | 'board'
 
 const USE_MOCK = !isSupabaseEnabled()
 
@@ -31,94 +36,110 @@ type Props = {
 }
 
 export function TeacherDashboard({ navigate, search }: Props) {
-  const hasQuery = useMemo(() => {
+  const qParsed = useMemo(() => {
     const q = new URLSearchParams(search)
-    return !!(q.get('aid')?.trim() && q.get('tv')?.trim())
+    return {
+      aid: q.get('aid')?.trim() ?? '',
+      tv: q.get('tv')?.trim() ?? '',
+    }
   }, [search])
 
-  const hasEnv = useMemo(
-    () =>
-      !USE_MOCK &&
-      !!(
-        import.meta.env.VITE_SUPABASE_ASSIGNMENT_ID?.trim() &&
-        import.meta.env.VITE_SUPABASE_TEACHER_TOKEN?.trim()
-      ),
-    []
-  )
+  const isLegacyBoard = !!(qParsed.aid && qParsed.tv)
 
-  const [view, setView] = useState<View>(() =>
-    hasQuery || hasEnv ? 'board' : 'welcome'
-  )
+  const [list, setList] = useState<TeacherAssignmentListItem[]>([])
+  const [listLoading, setListLoading] = useState(false)
+
   const [assignment, setAssignment] = useState<AssignmentSchema | null>(null)
   const [submissions, setSubmissions] = useState<SubmissionRecord[]>([])
-  const [loading, setLoading] = useState(() => hasQuery || hasEnv)
+  const [boardLoading, setBoardLoading] = useState(false)
   const [bannerError, setBannerError] = useState<string | null>(null)
+
   const [sort, setSort] = useState<SortMode>('submittedAt')
   const [lightbox, setLightbox] = useState<string | null>(null)
   const [zipping, setZipping] = useState(false)
 
-  const [openAid, setOpenAid] = useState('')
-  const [openTv, setOpenTv] = useState('')
-
   useEffect(() => {
     let on = true
-    const q = new URLSearchParams(search)
-    const qAid = q.get('aid')?.trim()
-    const qTv = q.get('tv')?.trim()
-    const hq = !!(qAid && qTv)
-    const he =
-      !USE_MOCK &&
-      !!(
-        import.meta.env.VITE_SUPABASE_ASSIGNMENT_ID?.trim() &&
-        import.meta.env.VITE_SUPABASE_TEACHER_TOKEN?.trim()
-      )
-
-    if (!hq && !he && USE_MOCK) {
-      setView('welcome')
-      setLoading(false)
-      setAssignment(null)
-      setSubmissions([])
+    if (isLegacyBoard) {
+      setBoardLoading(true)
       setBannerError(null)
+      ;(async () => {
+        try {
+          const data = await fetchTeacherDashboard({
+            assignmentId: qParsed.aid,
+            teacherToken: qParsed.tv,
+          })
+          if (!on) return
+          setAssignment(data.assignment)
+          setSubmissions(data.submissions)
+        } catch {
+          if (!on) return
+          setAssignment(null)
+          setSubmissions([])
+          setBannerError('تعذّر تحميل اللوحة. تحقق من المعرّف والرمز أو من الشبكة.')
+        } finally {
+          if (on) setBoardLoading(false)
+        }
+      })()
       return () => {
         on = false
       }
     }
 
-    setLoading(true)
-    setBannerError(null)
-
-    ;(async () => {
-      try {
-        const explicit = hq
-          ? { assignmentId: qAid!, teacherToken: qTv! }
-          : null
-        const data = await fetchTeacherDashboard(explicit)
-        if (!on) return
-        setAssignment(data.assignment)
-        setSubmissions(data.submissions)
-        setView('board')
-      } catch (e) {
-        if (!on) return
-        setAssignment(null)
-        setSubmissions([])
-        if (e instanceof Error && e.message === 'NO_CREDS') {
-          setView('welcome')
-        } else if (e instanceof Error && e.message === 'NOT_FOUND') {
-          setView('welcome')
-          setBannerError('معرّف الواجب أو رمز المراجعة غير صحيح.')
-        } else {
-          setView('welcome')
-          setBannerError('تعذّر تحميل اللوحة. تحقق من الشبكة أو الصلاحيات.')
+    if (qParsed.aid && getTeacherSession()) {
+      setBoardLoading(true)
+      setBannerError(null)
+      ;(async () => {
+        try {
+          const data = await fetchTeacherDashboardForSession(qParsed.aid)
+          if (!on) return
+          setAssignment(data.assignment)
+          setSubmissions(data.submissions)
+        } catch (e) {
+          if (!on) return
+          setAssignment(null)
+          setSubmissions([])
+          if (e instanceof Error && e.message === 'NOT_FOUND') {
+            setBannerError('هذا الواجب غير موجود أو لا يخص حسابك.')
+          } else {
+            setBannerError('تعذّر تحميل التسليمات.')
+          }
+        } finally {
+          if (on) setBoardLoading(false)
         }
-      } finally {
-        if (on) setLoading(false)
+      })()
+      return () => {
+        on = false
       }
-    })()
+    }
 
+    if (!qParsed.aid && getTeacherSession()) {
+      setListLoading(true)
+      setAssignment(null)
+      setSubmissions([])
+      ;(async () => {
+        try {
+          const rows = await listTeacherAssignments()
+          if (!on) return
+          setList(rows)
+        } finally {
+          if (on) setListLoading(false)
+        }
+      })()
+      return () => {
+        on = false
+      }
+    }
+
+    setList([])
+    setAssignment(null)
+    setSubmissions([])
+    setListLoading(false)
+    setBoardLoading(false)
     return () => {
       on = false
     }
-  }, [search])
+  }, [search, qParsed.aid, qParsed.tv, isLegacyBoard])
 
   const sorted = useMemo(() => {
     const copy = [...submissions]
@@ -173,70 +194,34 @@ export function TeacherDashboard({ navigate, search }: Props) {
     }
   }, [assignment, sorted])
 
-  if (view === 'welcome' && !loading) {
+  const openAssignment = (id: string) => {
+    navigate(`/teacher?aid=${encodeURIComponent(id)}`)
+  }
+
+  const backToList = () => {
+    navigate('/teacher')
+  }
+
+  const showBoard = isLegacyBoard || !!qParsed.aid
+
+  if (!showBoard) {
     return (
       <div className="teacher-welcome page-stack">
         <header className="panel welcome-hero">
-          <h1 className="page-title">لوحة الأستاذ</h1>
+          <h1 className="page-title">واجباتي</h1>
           <p className="lead muted">
-            أنشئ واجبًا وحدّد الحقول؛ يُولَّد رابط للطلاب ورابط مراجعة لك فقط. احفظ
-            رابط المراجعة في مكان آمن.
+            اختر واجبًا لعرض إجابات الطلاب، أو أنشئ واجبًا جديدًا.
           </p>
         </header>
 
-        <div className="welcome-split">
-        <section className="section-card panel section-card-accent">
-          <h2 className="section-card-title">واجب جديد</h2>
-          <p className="muted small">
-            تعريف المتطلبات ثم توليد روابط المشاركة والمراجعة.
-          </p>
-          <div className="home-actions" style={{ marginTop: '0.75rem' }}>
-            <button
-              type="button"
-              className="btn primary"
-              onClick={() => navigate('/teacher/new')}
-            >
-              إنشاء واجب ورابط مشاركة
-            </button>
-          </div>
-        </section>
-
-        <section className="section-card panel">
-          <h2 className="section-card-title">واجب موجود</h2>
-          <p className="muted small">
-            من رابط المراجعة بعد الإنشاء: الصِق المعرّف (UUID) والرمز السري.
-          </p>
-          <label className="field">
-            <span className="field-label">معرّف الواجب (UUID)</span>
-            <input
-              className="input"
-              dir="ltr"
-              value={openAid}
-              onChange={(e) => setOpenAid(e.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span className="field-label">رمز المراجعة</span>
-            <input
-              className="input"
-              dir="ltr"
-              value={openTv}
-              onChange={(e) => setOpenTv(e.target.value)}
-            />
-          </label>
+        <div className="home-actions" style={{ marginBottom: '1rem' }}>
           <button
             type="button"
-            className="btn secondary"
-            disabled={!openAid.trim() || !openTv.trim()}
-            onClick={() =>
-              navigate(
-                `/teacher?aid=${encodeURIComponent(openAid.trim())}&tv=${encodeURIComponent(openTv.trim())}`
-              )
-            }
+            className="btn primary"
+            onClick={() => navigate('/teacher/new')}
           >
-            فتح لوحة التسليمات
+            إنشاء واجب جديد
           </button>
-        </section>
         </div>
 
         {bannerError ? (
@@ -244,6 +229,44 @@ export function TeacherDashboard({ navigate, search }: Props) {
             {bannerError}
           </div>
         ) : null}
+
+        {listLoading ? (
+          <p className="muted">جارٍ التحميل…</p>
+        ) : list.length === 0 ? (
+          <div className="panel">
+            <p className="muted">لا توجد واجبات بعد. أنشئ أول واجب من الزر أعلاه.</p>
+            {USE_MOCK ? (
+              <p className="muted small">
+                الوضع المحلي: البيانات في هذا المتصفح فقط. مع Supabase تظهر الواجبات
+                لحسابك بعد تسجيل الدخول.
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <ul className="assignment-list">
+            {list.map((row) => (
+              <li key={row.id}>
+                <button
+                  type="button"
+                  className="panel assignment-list-item"
+                  onClick={() => openAssignment(row.id)}
+                >
+                  <div className="assignment-list-main">
+                    <h2 className="assignment-list-title">{row.title}</h2>
+                    <p className="muted small">
+                      كود المشاركة: <strong dir="ltr">{row.shareCode}</strong>
+                      {' — '}
+                      {row.submissionCount} تسليم
+                    </p>
+                  </div>
+                  <span className="assignment-list-chevron" aria-hidden>
+                    ‹
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     )
   }
@@ -252,10 +275,19 @@ export function TeacherDashboard({ navigate, search }: Props) {
     <div className="teacher-layout">
       <header className="teacher-head">
         <div>
-          <h1 className="page-title">لوحة المراجعة</h1>
+          <h1 className="page-title">إجابات الطلاب</h1>
           <p className="muted">{assignment?.title ?? '—'}</p>
         </div>
         <div className="teacher-toolbar">
+          {!isLegacyBoard ? (
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={backToList}
+            >
+              ← كل الواجبات
+            </button>
+          ) : null}
           <button
             type="button"
             className="btn secondary"
@@ -285,7 +317,7 @@ export function TeacherDashboard({ navigate, search }: Props) {
         </div>
       </header>
 
-      {bannerError && view === 'board' ? (
+      {bannerError ? (
         <div className="panel form-error" role="alert">
           {bannerError}
         </div>
@@ -308,7 +340,7 @@ export function TeacherDashboard({ navigate, search }: Props) {
         </section>
       )}
 
-      {loading ? (
+      {boardLoading ? (
         <p className="muted">جارٍ التحميل…</p>
       ) : (
         <ul className="card-grid">
@@ -323,9 +355,7 @@ export function TeacherDashboard({ navigate, search }: Props) {
                   })}
                 </time>
               </header>
-              {s.textAnswer && (
-                <p className="card-text">{s.textAnswer}</p>
-              )}
+              {s.textAnswer && <p className="card-text">{s.textAnswer}</p>}
               <div className="card-gallery">
                 {s.files
                   .filter((f) => f.isImage)
