@@ -27,7 +27,7 @@ export const DEMO_ASSIGNMENT: AssignmentSchema = {
       label: 'صور الحل',
       required: true,
       accept: 'image/jpeg,image/png,image/webp',
-      maxFiles: 8,
+      maxFiles: 10,
     },
     {
       id: 'extra_pdf',

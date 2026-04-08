@@ -19,7 +19,7 @@ values (
   '[
     {"id":"student_name","type":"text","label":"اسم الطالب","required":true},
     {"id":"answer_text","type":"text","label":"ملاحظات على الحل (اختياري)","required":false},
-    {"id":"solution_images","type":"images","label":"صور الحل","required":true,"accept":"image/jpeg,image/png,image/webp","maxFiles":8},
+    {"id":"solution_images","type":"images","label":"صور الحل","required":true,"accept":"image/jpeg,image/png,image/webp","maxFiles":10},
     {"id":"extra_pdf","type":"files","label":"ملف PDF إضافي (اختياري)","required":false,"accept":"application/pdf","maxFiles":1}
   ]'::jsonb,
   'b0e8400e-d29f-41d4-a716-446655440000'::uuid

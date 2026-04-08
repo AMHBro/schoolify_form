@@ -150,7 +150,8 @@ export function AssignmentBuilderPage({ navigate }: Props) {
           if (f.accept?.trim()) base.accept = f.accept.trim()
           if (f.type !== 'text' && typeof f.maxFiles === 'number')
             base.maxFiles = f.maxFiles
-          if (f.type !== 'text' && f.maxFiles == null) base.maxFiles = f.type === 'images' ? 8 : 2
+          if (f.type !== 'text' && f.maxFiles == null)
+            base.maxFiles = f.type === 'images' ? 10 : 2
           return base
         }),
         shareCode: shareCodeOpt.trim() || null,
@@ -376,7 +377,7 @@ export function AssignmentBuilderPage({ navigate }: Props) {
                     } else if (t === 'images') {
                       patchField(index, {
                         type: t,
-                        maxFiles: row.maxFiles ?? 8,
+                        maxFiles: row.maxFiles ?? 10,
                         accept: row.accept ?? 'image/jpeg,image/png,image/webp',
                       })
                     } else {
@@ -410,7 +411,7 @@ export function AssignmentBuilderPage({ navigate }: Props) {
                       type="number"
                       min={1}
                       max={20}
-                      value={row.maxFiles ?? ''}
+                      value={row.maxFiles ?? (row.type === 'images' ? 10 : '')}
                       onChange={(e) =>
                         patchField(index, {
                           maxFiles: Number(e.target.value) || undefined,

@@ -27,6 +27,14 @@ function acceptForField(f: AssignmentField): string {
   return '*'
 }
 
+function maxFilesForField(f: AssignmentField): number {
+  const raw = f.maxFiles
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) {
+    return Math.min(20, Math.floor(raw))
+  }
+  return f.type === 'images' ? 10 : 2
+}
+
 type Props = {
   schema: AssignmentSchema
 }
@@ -61,7 +69,7 @@ export function DynamicStudentForm({ schema }: Props) {
   const onPickFiles = useCallback(
     (field: AssignmentField, list: FileList | null) => {
       if (!list?.length) return
-      const max = field.maxFiles ?? 12
+      const max = maxFilesForField(field)
       const existing = filesByField[field.id] ?? []
       const incoming = [...list]
       const merged: File[] = [...existing.map((e) => e.file), ...incoming].slice(
@@ -207,6 +215,7 @@ export function DynamicStudentForm({ schema }: Props) {
 
           const previews = filesByField[f.id] ?? []
           const accept = acceptForField(f)
+          const maxCount = maxFilesForField(f)
           return (
             <div key={f.id} className="field">
               <span className="field-label">
@@ -223,8 +232,8 @@ export function DynamicStudentForm({ schema }: Props) {
                 />
                 <span className="upload-hint">
                   {f.type === 'images'
-                    ? 'اختر صورًا واحدة أو أكثر'
-                    : 'اختر ملفًا أو أكثر'}
+                    ? `اختر صورًا — يمكن اختيار حتى ${maxCount} صورة دفعة واحدة من المعرض، أو الإضافة على دفعات.`
+                    : `اختر ملفات — حتى ${maxCount} ملف.`}
                 </span>
               </label>
               {previews.length > 0 && (

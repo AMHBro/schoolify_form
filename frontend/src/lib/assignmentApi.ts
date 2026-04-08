@@ -518,12 +518,40 @@ export async function createAssignment(
   }
 }
 
+/**
+ * أسماء ملفات URL-safe / ASCII فقط — Storage يرفض المسارات ذات الأحرف غير اللاتينية (مثلاً أرقام عربية في اسم لقطة الشاشة).
+ */
 function sanitizeFileName(name: string): string {
-  const base = name
-    .replace(/^.*[/\\]/, '')
-    .replace(/[^\w.\u0600-\u06FF-]+/g, '_')
-    .slice(0, 120)
-  return base || 'file'
+  const leaf = name.replace(/^.*[/\\]/, '').trim() || 'file'
+  const lastDot = leaf.lastIndexOf('.')
+  const ext =
+    lastDot > 0 && lastDot < leaf.length - 1
+      ? leaf.slice(lastDot).slice(0, 20)
+      : ''
+  const stem = lastDot > 0 ? leaf.slice(0, lastDot) : leaf
+
+  const mapped = stem
+    .normalize('NFKC')
+    .replace(/[\u0660-\u0669]/g, (c) =>
+      String.fromCharCode(c.charCodeAt(0) - 0x0660 + 0x0030)
+    )
+    .replace(/[\u06f0-\u06f9]/g, (c) =>
+      String.fromCharCode(c.charCodeAt(0) - 0x06f0 + 0x0030)
+    )
+
+  const safeStem = mapped
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 100)
+
+  const safeExt = ext
+    .normalize('NFKC')
+    .replace(/[^a-zA-Z0-9.]+/g, '')
+    .slice(0, 15)
+
+  const out = `${safeStem || 'file'}${safeExt}`.slice(0, 120)
+  return out || 'file'
 }
 
 function parseSubmissionForm(fd: FormData): {
@@ -556,6 +584,9 @@ function translateSubmitError(message: string): string {
   if (m.includes('not_found')) return 'الواجب غير موجود.'
   if (m.includes('deadline_passed')) return 'انتهى موعد التسليم.'
   if (m.includes('invalid_submission')) return 'تعذّر تسجيل الملف.'
+  if (m.includes('invalid key')) {
+    return 'اسم الملف يحتوي رموزًا لا يقبلها التخزين. غيّر الاسم أو أعد المحاولة.'
+  }
   if (m.includes('mime') || m.includes('mime type')) {
     return 'نوع الملف غير مسموح. جرّب PDF أو صورة، أو راجع إعدادات التخزين.'
   }
