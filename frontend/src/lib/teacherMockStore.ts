@@ -1,6 +1,7 @@
 /** تخزين محلي لمعلّمين وجلساتهم عند عدم ربط Supabase */
 
 import type { TeacherSession } from './teacherSession'
+import { normalizeTeacherName, normalizeTeacherPhone } from './phoneNormalize'
 import { setTeacherSession } from './teacherSession'
 
 const TEACHERS_KEY = 'schoolify.mockTeachers.v1'
@@ -9,10 +10,6 @@ type MockTeacherRow = {
   id: string
   fullName: string
   phone: string
-}
-
-function normPhone(raw: string): string {
-  return raw.replace(/\D/g, '')
 }
 
 function readTeachers(): MockTeacherRow[] {
@@ -49,13 +46,14 @@ export function mockRegisterTeacher(
   fullName: string,
   phone: string
 ): { ok: true } | { ok: false; code: string } {
-  const name = fullName.trim()
-  const p = normPhone(phone)
+  const name = normalizeTeacherName(fullName)
+  const p = normalizeTeacherPhone(phone)
   if (name.length < 2) return { ok: false, code: 'name_required' }
   if (p.length < 8) return { ok: false, code: 'phone_invalid' }
 
   const all = readTeachers()
-  if (all.some((t) => t.phone === p)) return { ok: false, code: 'phone_taken' }
+  if (all.some((t) => normalizeTeacherPhone(t.phone) === p))
+    return { ok: false, code: 'phone_taken' }
 
   const row: MockTeacherRow = {
     id: crypto.randomUUID(),
@@ -75,13 +73,14 @@ export function mockLoginTeacher(
   fullName: string,
   phone: string
 ): TeacherSession | { error: string } {
-  const name = fullName.trim()
-  const p = normPhone(phone)
+  const name = normalizeTeacherName(fullName)
+  const p = normalizeTeacherPhone(phone)
   if (name.length < 2 || p.length < 8) return { error: 'invalid_credentials' }
 
   const t = readTeachers().find(
     (row) =>
-      row.phone === p && row.fullName.trim().toLowerCase() === name.toLowerCase()
+      normalizeTeacherPhone(row.phone) === p &&
+      normalizeTeacherName(row.fullName).toLowerCase() === name.toLowerCase()
   )
   if (!t) return { error: 'invalid_credentials' }
 
