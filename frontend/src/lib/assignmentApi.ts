@@ -216,13 +216,37 @@ export async function fetchTeacherDashboard(
 }
 
 export function translateAuthError(message: string): string {
-  if (message.includes('invalid_credentials'))
-    return 'الاسم الكامل أو رقم الجوال غير مطابقين.'
-  if (message.includes('phone_taken')) return 'هذا الرقم مسجّل مسبقًا.'
-  if (message.includes('phone_invalid')) return 'رقم الجوال غير صالح.'
-  if (message.includes('name_required')) return 'الاسم مطلوب (حرفان على الأقل).'
-  if (message.includes('session_invalid')) return 'انتهت الجلسة. سجّل الدخول مجددًا.'
-  return 'تعذّر إكمال العملية.'
+  const m = (message || '').toLowerCase()
+  if (m.includes('invalid_credentials'))
+    return 'الاسم الكامل أو رقم الجوال غير مطابقين لما في قاعدة البيانات. نفّذ seed_demo.sql أو أضف المعلّم من لوحة SQL.'
+  if (m.includes('phone_taken')) return 'هذا الرقم مسجّل مسبقًا.'
+  if (m.includes('phone_invalid')) return 'رقم الجوال غير صالح.'
+  if (m.includes('name_required')) return 'الاسم مطلوب (حرفان على الأقل).'
+  if (m.includes('session_invalid')) return 'انتهت الجلسة. سجّل الدخول مجددًا.'
+  if (
+    m.includes('could not find') ||
+    m.includes('does not exist') ||
+    m.includes('schema cache') ||
+    m.includes('42883')
+  ) {
+    return 'دالة تسجيل الدخول غير موجودة. نفّذ ملف هجرة المعلّمين 20260408210000_teachers_sessions.sql في Supabase.'
+  }
+  if (m.includes('permission denied') || m.includes('42501')) {
+    return 'الصلاحيات تمنع هذا الإجراء. تحقق من منح تنفيذ الدالة لـ anon في SQL.'
+  }
+  if (m.includes('jwt') || m.includes('apikey') || m.includes('invalid api')) {
+    return 'مفتاح Supabase غير صالح. راجع VITE_SUPABASE_ANON_KEY في الإعدادات.'
+  }
+  if (m.includes('failed to fetch') || m.includes('network')) {
+    return 'تعذّر الاتصال بالخادم. تحقق من الشبكة ومن VITE_SUPABASE_URL.'
+  }
+  if (m.includes('login_parse_failed')) {
+    return 'استجابة غير متوقعة من الخادم بعد تسجيل الدخول. أعد المحاولة أو راجع وحدة التحكم في المتصفح.'
+  }
+  if (message.trim()) {
+    return `تعذّر إكمال العملية: ${message.trim()}`
+  }
+  return 'تعذّر إكمال العملية. تحقق من تنفيذ ملفات SQL ومن بيانات المعلّم التجريبي.'
 }
 
 export async function teacherRegister(
@@ -259,15 +283,39 @@ export async function teacherLogin(
     p_full_name: fullName.trim(),
     p_phone: phone.trim(),
   })
-  if (error) return { ok: false, message: translateAuthError(error.message) }
-  const raw = data as Record<string, unknown> | null
-  if (!raw?.token || !raw?.teacherId) {
-    return { ok: false, message: translateAuthError('') }
+  if (error) {
+    const errRec = error as { message: string; details?: string; hint?: string }
+    const combined = [errRec.message, errRec.details, errRec.hint]
+      .filter(Boolean)
+      .join(' ')
+    console.warn('[Schoolify] teacher_login', combined)
+    return { ok: false, message: translateAuthError(combined) }
   }
+
+  const raw = parseRpcAssignmentPayload(data)
+  if (!raw) {
+    console.warn('[Schoolify] teacher_login unexpected data', data)
+    return { ok: false, message: translateAuthError('login_parse_failed') }
+  }
+
+  const tokenVal = raw.token ?? raw.Token
+  const teacherIdVal = raw.teacherId ?? raw.teacher_id
+  const nameVal = raw.fullName ?? raw.full_name ?? fullName.trim()
+
+  if (
+    tokenVal == null ||
+    String(tokenVal).length < 10 ||
+    teacherIdVal == null ||
+    String(teacherIdVal).length < 10
+  ) {
+    console.warn('[Schoolify] teacher_login missing fields', raw)
+    return { ok: false, message: translateAuthError('invalid_credentials') }
+  }
+
   setTeacherSession({
-    token: String(raw.token),
-    teacherId: String(raw.teacherId ?? raw.teacher_id ?? ''),
-    fullName: String(raw.fullName ?? raw.full_name ?? fullName.trim()),
+    token: String(tokenVal),
+    teacherId: String(teacherIdVal),
+    fullName: String(nameVal),
   })
   return { ok: true }
 }

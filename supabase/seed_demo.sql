@@ -39,7 +39,8 @@ values (
   'معلّم تجريبي',
   '966500000000'
 )
-on conflict (phone_e164) do nothing;
+on conflict (phone_e164) do update set
+  full_name = excluded.full_name;
 
 update public.assignments
 set teacher_id = 'c0e8400e-d29f-41d4-a716-446655440001'::uuid
