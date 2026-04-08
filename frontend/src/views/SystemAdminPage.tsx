@@ -132,6 +132,16 @@ export function SystemAdminPage({ navigate }: Props) {
     }
   }
 
+  /** الصفحة الرئيسية: نفس الاسم والجوال كما في الداشبورد + محاولة دخول */
+  const openTeacherOnLoginPage = (row: SystemAdminTeacherRow) => {
+    setPostRegisterLogin({
+      fullName: row.fullName,
+      phone: row.phone,
+      autoLogin: true,
+    })
+    navigate('/')
+  }
+
   const onLogoutAdmin = () => {
     clearSystemAdminSecret()
     setUnlocked(false)
@@ -349,7 +359,7 @@ export function SystemAdminPage({ navigate }: Props) {
                   <th>الاسم</th>
                   <th>الجوال</th>
                   <th>تاريخ الإنشاء</th>
-                  <th />
+                  <th className="data-table-actions-col">إجراءات</th>
                 </tr>
               </thead>
               <tbody>
@@ -373,14 +383,23 @@ export function SystemAdminPage({ navigate }: Props) {
                           : '—'}
                       </td>
                       <td>
-                        <button
-                          type="button"
-                          className="btn danger-ghost"
-                          disabled={deleteTeacherBusyId === t.id}
-                          onClick={() => void onDeleteTeacher(t)}
-                        >
-                          {deleteTeacherBusyId === t.id ? '…' : 'حذف'}
-                        </button>
+                        <div className="data-table-row-actions">
+                          <button
+                            type="button"
+                            className="btn secondary"
+                            onClick={() => openTeacherOnLoginPage(t)}
+                          >
+                            تسجيل الدخول
+                          </button>
+                          <button
+                            type="button"
+                            className="btn danger-ghost"
+                            disabled={deleteTeacherBusyId === t.id}
+                            onClick={() => void onDeleteTeacher(t)}
+                          >
+                            {deleteTeacherBusyId === t.id ? '…' : 'حذف'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

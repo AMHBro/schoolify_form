@@ -23,7 +23,7 @@ export function HomePage({ go }: Props) {
     }
   }, [go])
 
-  /** بيانات حُفظت من لوحة الإدارة بعد إضافة معلّم — نفس الحقول + محاولة دخول */
+  /** بيانات من لوحة الإدارة: تعبئة الحقول، واختياريًا محاولة دخول تلقائية */
   useEffect(() => {
     if (getTeacherSession()) return
     const pending = consumePostRegisterLogin()
@@ -31,6 +31,7 @@ export function HomePage({ go }: Props) {
     setFullName(pending.fullName)
     setPhone(pending.phone)
     setErr(null)
+    if (pending.autoLogin === false) return
     setBusy(true)
     void (async () => {
       const r = await teacherLogin(pending.fullName, pending.phone)

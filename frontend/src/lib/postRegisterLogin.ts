@@ -2,15 +2,22 @@
 
 const KEY = 'schoolify.postRegisterLogin.v1'
 
-export type PostRegisterLoginPayload = { fullName: string; phone: string }
+export type PostRegisterLoginPayload = {
+  fullName: string
+  phone: string
+  /** افتراضيًا true: محاولة teacherLogin عند فتح الصفحة الرئيسية */
+  autoLogin?: boolean
+}
 
 export function setPostRegisterLogin(payload: PostRegisterLoginPayload) {
   try {
+    const autoLogin = payload.autoLogin !== false
     sessionStorage.setItem(
       KEY,
       JSON.stringify({
         fullName: payload.fullName.trim(),
         phone: payload.phone.trim(),
+        ...(autoLogin ? {} : { autoLogin: false }),
       })
     )
   } catch {
@@ -29,7 +36,11 @@ export function consumePostRegisterLogin(): PostRegisterLoginPayload | null {
     const fullName = String((o as PostRegisterLoginPayload).fullName ?? '').trim()
     const phone = String((o as PostRegisterLoginPayload).phone ?? '').trim()
     if (fullName.length < 2 || phone.length < 8) return null
-    return { fullName, phone }
+    const autoLogin =
+      typeof (o as PostRegisterLoginPayload).autoLogin === 'boolean'
+        ? (o as PostRegisterLoginPayload).autoLogin
+        : true
+    return { fullName, phone, autoLogin }
   } catch {
     try {
       sessionStorage.removeItem(KEY)

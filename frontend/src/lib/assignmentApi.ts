@@ -29,9 +29,21 @@ import {
   isSupabaseEnabled,
   SUBMISSION_BUCKET,
 } from './supabaseClient'
-import { normalizeTeacherName } from './phoneNormalize'
+import { normalizeTeacherPhone } from './phoneNormalize'
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/** الاسم: التطبيع الكامل في Postgres (normalize_teacher_full_name) — نرسل فقط trim لتوافقه مع التسجيل */
+function rpcTeacherFullName(raw: string): string {
+  return raw.trim()
+}
+
+/** الجوال: نفس منطق public.normalize_teacher_phone قبل الإرسال */
+function rpcTeacherPhone(raw: string): string {
+  const t = raw.trim()
+  const n = normalizeTeacherPhone(t)
+  return n || t
+}
 
 const USE_MOCK = !isSupabaseEnabled()
 
@@ -300,14 +312,13 @@ export async function teacherRegister(
   if (USE_MOCK) {
     await delay(40)
     const r = mockRegisterTeacher(fullName, phone)
-    if (!r.ok) return { ok: false, message: translateAuthError(r.code) }
+    if (r.ok === false) return { ok: false, message: translateAuthError(r.code) }
     return { ok: true }
   }
   const sb = getSupabaseClient()!
   const { error } = await sb.rpc('teacher_register', {
-    p_full_name: normalizeTeacherName(fullName),
-    /** رقم الجوال كما أدخله المستخدم؛ التطبيع فقط في Postgres ليتطابق الإدخال من الداشبورد والرئيسية */
-    p_phone: phone.trim(),
+    p_full_name: rpcTeacherFullName(fullName),
+    p_phone: rpcTeacherPhone(phone),
   })
   if (error) return { ok: false, message: translateAuthError(error.message) }
   return { ok: true }
@@ -323,14 +334,13 @@ export async function teacherLogin(
     if ('error' in r) return { ok: false, message: translateAuthError(r.error) }
     return { ok: true }
   }
-  const name = normalizeTeacherName(fullName)
-  const phoneRaw = phone.trim()
+  const name = rpcTeacherFullName(fullName)
   const sb = getSupabaseClient()!
   let data: unknown
   try {
     const r = await sb.rpc('teacher_login', {
       p_full_name: name,
-      p_phone: phoneRaw,
+      p_phone: rpcTeacherPhone(phone),
     })
     data = r.data
     if (r.error) {
@@ -351,7 +361,9 @@ export async function teacherLogin(
     return { ok: false, message: translateAuthError(msg) }
   }
 
-  const raw = parseRpcAssignmentPayload(data)
+  let payload: unknown = data
+  if (Array.isArray(payload) && payload.length === 1) payload = payload[0]
+  const raw = parseRpcAssignmentPayload(payload)
   if (!raw) {
     console.warn('[Schoolify] teacher_login unexpected data', data)
     return { ok: false, message: translateAuthError('login_parse_failed') }
@@ -533,14 +545,14 @@ export async function systemAdminRegisterTeacher(
     if (!assertSystemAdminMockKey(adminKey))
       return { ok: false, message: translateSystemAdminError('system_admin_forbidden') }
     const r = mockRegisterTeacher(fullName, phone)
-    if (!r.ok) return { ok: false, message: translateAuthError(r.code) }
+    if (r.ok === false) return { ok: false, message: translateAuthError(r.code) }
     return { ok: true }
   }
   const sb = getSupabaseClient()!
   const { error } = await sb.rpc('system_admin_register_teacher', {
     p_secret: adminKey.trim(),
-    p_full_name: normalizeTeacherName(fullName),
-    p_phone: phone.trim(),
+    p_full_name: rpcTeacherFullName(fullName),
+    p_phone: rpcTeacherPhone(phone),
   })
   if (error)
     return { ok: false, message: translateSystemAdminError(error.message) }

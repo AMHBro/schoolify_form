@@ -1009,3 +1009,17 @@
 .data-table tbody tr:hover {
   background: rgba(107, 90, 140, 0.04);
 }
+
+.data-table-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.data-table-actions-col {
+  white-space: nowrap;
+  text-align: end;
+  width: 1%;
+}
