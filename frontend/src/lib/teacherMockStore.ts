@@ -30,6 +30,21 @@ function writeTeachers(rows: MockTeacherRow[]) {
   localStorage.setItem(TEACHERS_KEY, JSON.stringify(rows))
 }
 
+/** نفس معرّف البذرة في seed_demo — معلّم واحد للوضع المحلي دون واجهة «تسجيل جديد» */
+const DEMO_TEACHER_ID = 'c0e8400e-d29f-41d4-a716-446655440001'
+
+export function ensureMockDemoTeacher() {
+  const all = readTeachers()
+  if (all.some((t) => t.id === DEMO_TEACHER_ID)) return
+  if (all.some((t) => t.phone === '966500000000')) return
+  all.push({
+    id: DEMO_TEACHER_ID,
+    fullName: 'معلّم تجريبي',
+    phone: '966500000000',
+  })
+  writeTeachers(all)
+}
+
 export function mockRegisterTeacher(
   fullName: string,
   phone: string
