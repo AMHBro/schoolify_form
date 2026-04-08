@@ -14,11 +14,11 @@ function isLocalSystemAdminHost(): boolean {
 
 /**
  * السماح بتحميل صفحة /system عند فتح العنوان يدويًا (لا روابط في الواجهة).
- * شرطان: VITE_ENABLE_SYSTEM_ADMIN_UI=true والمتصفح على محلي فقط — النشر على الإنترنت لا يفعلها حتى مع الـ env.
+ * - محلي: VITE_ENABLE_SYSTEM_ADMIN_UI=true
+ * - إنتاج (Vercel…): نفس المتغير + VITE_ALLOW_SYSTEM_ADMIN_PRODUCTION=true (تفعيل صريح لأن المسار عام)
  */
 export function showSystemAdminUi(): boolean {
-  return (
-    import.meta.env.VITE_ENABLE_SYSTEM_ADMIN_UI === 'true' &&
-    isLocalSystemAdminHost()
-  )
+  if (import.meta.env.VITE_ENABLE_SYSTEM_ADMIN_UI !== 'true') return false
+  if (isLocalSystemAdminHost()) return true
+  return import.meta.env.VITE_ALLOW_SYSTEM_ADMIN_PRODUCTION === 'true'
 }
