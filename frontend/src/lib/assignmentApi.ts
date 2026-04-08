@@ -29,13 +29,13 @@ import {
   isSupabaseEnabled,
   SUBMISSION_BUCKET,
 } from './supabaseClient'
-import { normalizeTeacherPhone } from './phoneNormalize'
+import { normalizeTeacherNameForRpc, normalizeTeacherPhone } from './phoneNormalize'
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-/** الاسم: التطبيع الكامل في Postgres (normalize_teacher_full_name) — نرسل فقط trim لتوافقه مع التسجيل */
+/** الاسم: مواءمة مع normalize_teacher_full_name في Postgres */
 function rpcTeacherFullName(raw: string): string {
-  return raw.trim()
+  return normalizeTeacherNameForRpc(raw)
 }
 
 /** الجوال: نفس منطق public.normalize_teacher_phone قبل الإرسال */
@@ -74,6 +74,35 @@ function parseRpcAssignmentPayload(data: unknown): Record<string, unknown> | nul
   }
   if (typeof data === 'object' && !Array.isArray(data)) return data as Record<string, unknown>
   return null
+}
+
+/** نتيجة teacher_login: قد تأتي ككائن أو مصفوفة من عنصر أو مُغلفة */
+function parseTeacherLoginPayload(data: unknown): Record<string, unknown> | null {
+  let payload: unknown = data
+  if (Array.isArray(payload) && payload.length === 1) payload = payload[0]
+  let raw = parseRpcAssignmentPayload(payload)
+  if (!raw) return null
+  const hasToken =
+    raw.token != null || (raw as { Token?: unknown }).Token != null
+  const hasId =
+    raw.teacherId != null ||
+    raw.teacher_id != null ||
+    (raw as { TeacherId?: unknown }).TeacherId != null
+  if (!hasToken || !hasId) {
+    for (const v of Object.values(raw)) {
+      const inner = parseRpcAssignmentPayload(v)
+      if (
+        inner &&
+        (inner.token != null ||
+          inner.Token != null ||
+          inner.teacherId != null ||
+          inner.teacher_id != null)
+      ) {
+        return inner
+      }
+    }
+  }
+  return raw
 }
 
 function normalizeFieldType(raw: unknown): AssignmentField['type'] {
@@ -361,31 +390,32 @@ export async function teacherLogin(
     return { ok: false, message: translateAuthError(msg) }
   }
 
-  let payload: unknown = data
-  if (Array.isArray(payload) && payload.length === 1) payload = payload[0]
-  const raw = parseRpcAssignmentPayload(payload)
+  const raw = parseTeacherLoginPayload(data)
   if (!raw) {
     console.warn('[Schoolify] teacher_login unexpected data', data)
     return { ok: false, message: translateAuthError('login_parse_failed') }
   }
 
   const tokenVal = raw.token ?? raw.Token
-  const teacherIdVal = raw.teacherId ?? raw.teacher_id
+  const teacherIdVal =
+    raw.teacherId ?? raw.teacher_id ?? (raw as { TeacherId?: unknown }).TeacherId
   const nameVal = raw.fullName ?? raw.full_name ?? name
 
+  const tokenS = tokenVal != null ? String(tokenVal).trim() : ''
+  const idS = teacherIdVal != null ? String(teacherIdVal).trim() : ''
   if (
-    tokenVal == null ||
-    String(tokenVal).length < 10 ||
-    teacherIdVal == null ||
-    String(teacherIdVal).length < 10
+    tokenS.length < 8 ||
+    idS.length < 8 ||
+    tokenS === '[object Object]' ||
+    idS === '[object Object]'
   ) {
     console.warn('[Schoolify] teacher_login missing fields', raw)
     return { ok: false, message: translateAuthError('invalid_credentials') }
   }
 
   setTeacherSession({
-    token: String(tokenVal),
-    teacherId: String(teacherIdVal),
+    token: tokenS,
+    teacherId: idS,
     fullName: String(nameVal),
   })
   return { ok: true }
