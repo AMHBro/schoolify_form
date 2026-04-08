@@ -1,0 +1,127 @@
+:root {
+  --lavender-1: #f4f0ff;
+  --lavender-2: #e8e0fb;
+  --lavender-3: #cfc2ee;
+  --gray-0: #fafaf9;
+  --gray-1: #f0eeeb;
+  --gray-2: #cfc9c2;
+  --gray-3: #7a7369;
+  --gray-4: #2e2a32;
+  --accent: #6b5a8c;
+  --accent-deep: #4f426d;
+  --accent-soft: rgba(107, 90, 140, 0.1);
+  --accent-ring: rgba(107, 90, 140, 0.35);
+  --danger: #a34343;
+  --text-strong: var(--gray-4);
+  --muted: var(--gray-3);
+  --surface: var(--gray-0);
+  --surface-2: #ece8f7;
+  --elevated: var(--lavender-1);
+  --bg: linear-gradient(165deg, var(--lavender-1) 0%, var(--gray-0) 42%, #f7f5ff 100%);
+  --border: rgba(46, 42, 50, 0.12);
+  --shadow:
+    0 14px 40px rgba(46, 42, 50, 0.07),
+    0 4px 12px rgba(46, 42, 50, 0.05);
+  --radius: 14px;
+  --radius-sm: 8px;
+  --sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--text-strong);
+  background: var(--lavender-2);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--bg);
+}
+
+#root {
+  min-height: 100svh;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.page-title {
+  font-size: 1.65rem;
+  margin: 0 0 0.35rem;
+  color: var(--text-strong);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.35rem 1.35rem;
+  box-shadow: var(--shadow);
+}
+
+.btn {
+  font: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 1rem;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent-deep);
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: var(--accent-deep);
+}
+
+.btn.secondary {
+  background: var(--surface);
+  color: var(--accent-deep);
+  border-color: var(--border);
+}
+
+.btn.secondary:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+}
+
+.select {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-strong);
+}
