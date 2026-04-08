@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   systemAdminDeleteAssignment,
+  systemAdminDeleteTeacher,
   systemAdminListAssignments,
   systemAdminListTeachers,
   systemAdminRegisterTeacher,
@@ -38,6 +39,9 @@ export function SystemAdminPage({ navigate }: Props) {
   const [addMsg, setAddMsg] = useState<string | null>(null)
 
   const [deleteBusyId, setDeleteBusyId] = useState<string | null>(null)
+  const [deleteTeacherBusyId, setDeleteTeacherBusyId] = useState<string | null>(
+    null
+  )
 
   const refreshLists = useCallback(async () => {
     const key = getSystemAdminSecret()
@@ -154,13 +158,31 @@ export function SystemAdminPage({ navigate }: Props) {
       setNewName('')
       setNewPhone('')
       const login = await teacherLogin(savedName, savedPhone)
-      if (login.ok) {
-        navigate('/teacher')
-      } else {
+      if (login.ok === false) {
         setAddMsg(`تم الحفظ. ${login.message}`)
+        return
       }
+      navigate('/teacher/new')
     } finally {
       setAddBusy(false)
+    }
+  }
+
+  const onDeleteTeacher = async (row: SystemAdminTeacherRow) => {
+    const key = getSystemAdminSecret()
+    if (!key) return
+    const ok = window.confirm(`حذف المعلّم «${row.fullName}»؟`)
+    if (!ok) return
+    setDeleteTeacherBusyId(row.id)
+    try {
+      const r = await systemAdminDeleteTeacher(key, row.id)
+      if (r.ok === false) {
+        window.alert(r.message)
+        return
+      }
+      await refreshLists()
+    } finally {
+      setDeleteTeacherBusyId(null)
     }
   }
 
@@ -324,12 +346,13 @@ export function SystemAdminPage({ navigate }: Props) {
                   <th>الاسم</th>
                   <th>الجوال</th>
                   <th>تاريخ الإنشاء</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
                 {teachers.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="muted">
+                    <td colSpan={4} className="muted">
                       لا يوجد معلّمون بعد.
                     </td>
                   </tr>
@@ -345,6 +368,16 @@ export function SystemAdminPage({ navigate }: Props) {
                               timeStyle: 'short',
                             })
                           : '—'}
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn danger-ghost"
+                          disabled={deleteTeacherBusyId === t.id}
+                          onClick={() => void onDeleteTeacher(t)}
+                        >
+                          {deleteTeacherBusyId === t.id ? '…' : 'حذف'}
+                        </button>
                       </td>
                     </tr>
                   ))

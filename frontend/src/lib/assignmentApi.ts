@@ -17,6 +17,7 @@ import {
   toSchema,
 } from './localAssignmentStore'
 import {
+  mockDeleteTeacher,
   mockListTeachers,
   mockLoginTeacher,
   mockRegisterTeacher,
@@ -411,6 +412,7 @@ export function translateSystemAdminError(message: string): string {
   if (m.includes('phone_invalid')) return 'رقم الجوال غير صالح.'
   if (m.includes('name_required')) return 'الاسم مطلوب (حرفان على الأقل).'
   if (m.includes('assignment_not_found')) return 'الواجب غير موجود.'
+  if (m.includes('teacher_not_found')) return 'المعلّم غير موجود.'
   if (
     m.includes('could not find') ||
     m.includes('does not exist') ||
@@ -558,6 +560,29 @@ export async function systemAdminListAssignments(
   if (error)
     return { ok: false, message: translateSystemAdminError(String(error.message)) }
   return { ok: true, rows: parseSystemAdminListAssignmentsJson(data) }
+}
+
+export async function systemAdminDeleteTeacher(
+  adminKey: string,
+  teacherId: string
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (USE_MOCK) {
+    await delay(50)
+    if (!assertSystemAdminMockKey(adminKey))
+      return { ok: false, message: translateSystemAdminError('system_admin_forbidden') }
+    const ok = mockDeleteTeacher(teacherId)
+    if (!ok)
+      return { ok: false, message: translateSystemAdminError('teacher_not_found') }
+    return { ok: true }
+  }
+  const sb = getSupabaseClient()!
+  const { error } = await sb.rpc('system_admin_delete_teacher', {
+    p_secret: adminKey.trim(),
+    p_teacher_id: teacherId,
+  })
+  if (error)
+    return { ok: false, message: translateSystemAdminError(error.message) }
+  return { ok: true }
 }
 
 export async function systemAdminDeleteAssignment(

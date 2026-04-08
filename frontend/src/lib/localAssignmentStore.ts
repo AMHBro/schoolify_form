@@ -114,3 +114,14 @@ export function mockDeleteAssignment(assignmentId: string): boolean {
   writeAll(next)
   return true
 }
+
+/** يطابق سلوك FK on delete set null في Supabase */
+export function mockDetachTeacherFromAssignments(teacherId: string): void {
+  const all = readAll()
+  if (!all.some((a) => a.teacherId === teacherId)) return
+  writeAll(
+    all.map((a) =>
+      a.teacherId === teacherId ? { ...a, teacherId: undefined } : a
+    )
+  )
+}

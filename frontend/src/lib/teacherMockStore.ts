@@ -1,6 +1,7 @@
 /** تخزين محلي لمعلّمين وجلساتهم عند عدم ربط Supabase */
 
 import type { TeacherSession } from './teacherSession'
+import { mockDetachTeacherFromAssignments } from './localAssignmentStore'
 import { normalizeTeacherName, normalizeTeacherPhone } from './phoneNormalize'
 import { setTeacherSession } from './teacherSession'
 
@@ -69,6 +70,15 @@ export function mockListTeachers(): MockTeacherRow[] {
   return readTeachers().slice().sort((a, b) => a.fullName.localeCompare(b.fullName, 'ar'))
 }
 
+export function mockDeleteTeacher(teacherId: string): boolean {
+  const all = readTeachers()
+  const next = all.filter((t) => t.id !== teacherId)
+  if (next.length === all.length) return false
+  writeTeachers(next)
+  mockDetachTeacherFromAssignments(teacherId)
+  return true
+}
+
 export function mockLoginTeacher(
   fullName: string,
   phone: string
@@ -77,11 +87,16 @@ export function mockLoginTeacher(
   const p = normalizeTeacherPhone(phone)
   if (name.length < 2 || p.length < 8) return { error: 'invalid_credentials' }
 
-  const t = readTeachers().find(
+  const all = readTeachers()
+  let t = all.find(
     (row) =>
       normalizeTeacherPhone(row.phone) === p &&
       normalizeTeacherName(row.fullName).toLowerCase() === name.toLowerCase()
   )
+  if (!t) {
+    const byPhone = all.filter((row) => normalizeTeacherPhone(row.phone) === p)
+    if (byPhone.length === 1) t = byPhone[0]
+  }
   if (!t) return { error: 'invalid_credentials' }
 
   const session: TeacherSession = {
