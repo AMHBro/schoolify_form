@@ -297,6 +297,8 @@ export async function fetchTeacherDashboard(
 export function translateAuthError(message: string): string {
   const m = (message || '').toLowerCase()
   if (m.includes('invalid_credentials')) return 'بيانات الدخول غير صحيحة.'
+  if (m.includes('registration_admin_only'))
+    return 'إضافة المعلّم تتم من لوحة إدارة النظام فقط. اطلب من المشرف تسجيلك ثم سجّل الدخول هنا.'
   if (m.includes('phone_taken')) return 'هذا الرقم مسجّل مسبقًا.'
   if (m.includes('phone_invalid')) return 'رقم الجوال غير صالح.'
   if (m.includes('name_required')) return 'الاسم مطلوب.'
