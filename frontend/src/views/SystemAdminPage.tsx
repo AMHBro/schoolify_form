@@ -13,6 +13,7 @@ import { setPostRegisterLogin } from '../lib/postRegisterLogin'
 import {
   clearSystemAdminSecret,
   getSystemAdminSecret,
+  normalizeSystemAdminSecretInput,
   setSystemAdminSecret,
 } from '../lib/systemAdminSession'
 
@@ -112,7 +113,7 @@ export function SystemAdminPage({ navigate }: Props) {
     setUnlockErr(null)
     setUnlockBusy(true)
     try {
-      const trimmed = secretInput.trim()
+      const trimmed = normalizeSystemAdminSecretInput(secretInput)
       const r = await systemAdminListTeachers(trimmed)
       if (r.ok === false) {
         setUnlockErr(r.message)

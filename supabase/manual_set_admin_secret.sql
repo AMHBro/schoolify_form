@@ -5,7 +5,7 @@
 -- ② نفّذ الاستعلام مرة واحدة.
 
 UPDATE public.system_admin_config
-SET secret_key = trim(replace('ضع_كلمة_السر_هنا', chr(10), ''))
+SET secret_key = trim(replace('AMH_Form', chr(10), ''))
 WHERE id = 1;
 
 -- إن أرجع UPDATE 0 صف: تأكد أن الجدول موجود (ترحيل 20260408240000_system_admin_dashboard.sql) ثم:
